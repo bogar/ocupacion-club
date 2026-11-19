@@ -20,7 +20,7 @@ La fila anterior es un **ejemplo de formato**. No es una lectura utilizada por e
 
 ## Publicar con GitHub Pages
 
-En **Settings → Pages → Build and deployment**, seleccionar **Deploy from a branch**, rama `main` y carpeta `/(root)`. La página quedará disponible en `https://bogar.github.io/ocupacion-club/` una vez finalizada la publicación de GitHub Pages.
+En **Settings > Pages > Build and deployment**, seleccionar **GitHub Actions** como origen. El workflow `.github/workflows/pages.yml` despliega el panel tras cada modificación del CSV o de los archivos de la web, incluso cuando haya doce actualizaciones por hora. El panel permanece en `https://bogar.github.io/ocupacion-club/`.
 
 ## Actualización de datos
 
@@ -31,3 +31,7 @@ Si no hay lecturas, la página muestra un estado sin datos. Los colores del mapa
 ## Funcionamiento
 
 Sitio estático sin dependencias, analíticas, cookies ni almacenamiento local. Todas las horas se muestran en la zona horaria `Europe/Madrid`.
+
+## Frecuencia y estado
+
+Se prevé una lectura cada 5 minutos desde un proceso externo. La web comprueba el CSV cada minuto sin recargar la página y advierte si la lectura más reciente supera los 20 minutos de antigüedad. La publicación puede tener un pequeño retraso respecto de la toma de datos. El CSV público contiene hasta 60 días de lecturas; el histórico completo se conserva fuera de este repositorio.
