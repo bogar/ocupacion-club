@@ -85,3 +85,13 @@ Si falta una lectura comparable, ese indicador muestra **Sin datos** sin afectar
 El LXC realiza una recogida cada cinco minutos y, mediante la API Git Data, publica `data/latest.json` y `data/live.csv` en **un solo commit**. `live.csv` contiene las últimas 26 horas y cubre la transición entre días. `data/ocupacion.csv` se renueva aproximadamente **una vez al día**, conservando la ventana de 60 días. Los meses cerrados se archivan definitivamente en `data/archivo/`. La copia original completa permanece sin recorte en Proxmox.
 
 El navegador fusiona `data/live.csv` con `data/ocupacion.csv` por timestamp para evitar duplicados. GitHub Pages se construye solo cuando cambia la interfaz, no con cada lectura nueva. Estas medidas reducen considerablemente los archivos reescritos y el consumo de compilaciones.
+
+## Optimización de carga (versión actual)
+
+- **Arranque por etapas:** se solicita primero `data/latest.json` para mostrar inmediatamente la ocupación; después `data/live.csv` para las tendencias y las dos últimas horas.
+- **Histórico bajo demanda:** el CSV de 60 días se descarga en segundo plano al usar la vista completa y se vuelve a comprobar cada hora, no cada minuto.
+- **Gráficos diferidos:** Chart.js se descarga solo en vista completa, después de consultar la ocupación. Las fechas ya convertidas se reutilizan en memoria al calcular estadísticas.
+- **Vista rápida:** botón en la cabecera. Oculta análisis históricos y muestra únicamente ocupación, tendencias y gráfico de las últimas dos horas. La elección se guarda en el navegador (solo esta preferencia).
+- **Caché segura:** para `latest.json` y `live.csv` nunca se utiliza como respaldo la copia del último despliegue de GitHub Pages, que podría estar obsoleta. Si falla la red se conserva la hora conocida y aparece el estado de error, sin fingir que es una lectura actual.
+
+La vista completa sigue incluyendo el historial, el mapa de calor, la comparativa mensual y las recomendaciones.
