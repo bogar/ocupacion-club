@@ -150,7 +150,10 @@ function render(){
  if(!state)return;
  latestState=state;
  const now=new Date();
- sparkline(state.latest,state.rows);
+ if(state.estimated){
+  sparkline(null,[]);
+  $('sparklineHint').textContent='Sin lecturas reales durante el cierre estimado';
+ }else sparkline(state.latest,state.rows);
  // Las estadísticas históricas se calculan solo al abrir la vista completa.
  if(window.OCUPACION_VIEW_QUICK)return;
  const history=hourlyHistory(state.rows,now);
