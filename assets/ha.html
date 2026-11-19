@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="color-scheme" content="light dark">
+  <title>Ocupación club</title>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: #243047;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    #count { font-size: clamp(36px, 14vw, 72px); font-weight: 700; line-height: 1; }
+    @media (prefers-color-scheme: dark) { body { color: #e8edf7; } }
+  </style>
+</head>
+<body>
+  <output id="count" aria-label="Personas en el club" aria-live="polite">…</output>
+  <script>
+    const count = document.getElementById('count');
+    async function update() {
+      try {
+        const response = await fetch('../data/ocupacion.csv?t=' + Date.now(), { cache: 'no-store' });
+        if (!response.ok) throw new Error('No se pudo cargar el histórico');
+        const rows = (await response.text()).trim().split(/\r?\n/);
+        if (rows.length < 2) throw new Error('Sin lecturas');
+        const values = rows[rows.length - 1].split(',');
+        if (values.length !== 2) throw new Error('Formato incorrecto');
+        const timestamp = Date.parse(values[0]);
+        const people = Number(values[1]);
+        const age = Date.now() - timestamp;
+        if (!Number.isFinite(timestamp) || !Number.isInteger(people) || people < 0 ||
+            age > 20 * 60 * 1000 || age < -2 * 60 * 1000) {
+          throw new Error('Lectura inválida o desactualizada');
+        }
+        count.textContent = String(people);
+        count.title = 'Última lectura: ' + new Date(timestamp).toLocaleString('es-ES');
+      } catch {
+        count.textContent = '—';
+        count.title = 'Sin lectura reciente';
+      }
+    }
+    update();
+    setInterval(update, 60 * 1000);
+  </script>
+</body>
+</html>
