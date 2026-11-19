@@ -205,53 +205,38 @@ function hourlyBuckets(rows){
   return {days:daily.length,mean:daily.length?average(daily):null};
  }));
 }
-function makeProfile(grid){
- const series=[];
- const uniqueWeekdays=new Set(),uniqueWeekend=new Set();
- const rows=patternRows();
+function makeProfile(rows){
+ const sections=[
+  {name:'Laborables',first:0,last:4,color:'#356ebe',days:new Set(),hourly:Array.from({length:18},()=>new Map())},
+  {name:'Fin de semana',first:5,last:6,color:'#d59155',days:new Set(),hourly:Array.from({length:18},()=>new Map())}
+ ];
  for(const row of rows){
   const k=info(row.time);
-  if(k.weekday<=4)uniqueWeekdays.add(k.day);else uniqueWeekend.add(k.day);
+  if(k.hour<6||k.hour>23)continue;
+  const section=sections[k.weekday<=4?0:1];
+  section.days.add(k.day);
+  const slot=section.hourly[k.hour-6];
+  const sums=slot.get(k.day)||{total:0,count:0};
+  sums.total+=row.people;sums.count++;
+  slot.set(k.day,sums);
  }
- const sections=[{name:'Laborables',first:0,last:4,days:uniqueWeekdays.size,color:'#356ebe'},
-                 {name:'Fin de semana',first:5,last:6,days:uniqueWeekend.size,color:'#d59155'}];
+ const series=[];
  for(const section of sections){
-  if(section.days<3)continue;
-  const points=[];
-  for(let hour=6;hour<=23;hour++){
-   const daily=[];
-   for(let day=section.first;day<=section.last;day++){
-    // Un valor por fecha y hora, independientemente del número de lecturas.
-    const entries=grid[day][hour-6];
-    if(entries.mean!==null){
-     // Estas medias se han calculado sobre días distintos de cada día de semana.
-     // Cada calendario aparece en un único weekday dentro del conjunto.
-     // Para el perfil completo necesitamos las medias de cada jornada.
-    }
-   }
-   // Se calculan desde las lecturas agrupadas por fecha real, no desde un único
-   // promedio por día de la semana.
-   const dateSlots=new Map();
-   for(const row of rows){
-    const k=info(row.time);
-    if(k.weekday<section.first||k.weekday>section.last||k.hour!==hour)continue;
-    let sum=dateSlots.get(k.day);
-    if(!sum){sum={total:0,n:0};dateSlots.set(k.day,sum);}
-    sum.total+=row.people;sum.n++;
-   }
-   for(const item of dateSlots.values())daily.push(item.total/item.n);
-   points.push(daily.length>=2?{x:String(hour).padStart(2,'0')+':00',y:Math.round(average(daily)),days:daily.length}:{x:String(hour).padStart(2,'0')+':00',y:null,days:daily.length});
-  }
-  series.push({label:section.name,data:points,color:section.color,days:section.days});
+  if(section.days.size<3)continue;
+  const points=section.hourly.map((slot,index)=>{
+   const values=[...slot.values()].map(row=>row.total/row.count);
+   return {x:index+6,y:values.length>=2?Math.round(average(values)):null,days:values.length};
+  });
+  series.push({label:section.name,data:points,color:section.color,days:section.days.size});
  }
- return {series,weekdayDays:uniqueWeekdays.size,weekendDays:uniqueWeekend.size};
+ return {series,weekdayDays:sections[0].days.size,weekendDays:sections[1].days.size};
 }
-function profile(grid){
+function profile(rows){
  destroyChart(profileChart);profileChart=null;
  $('profileScope').textContent=selectedMonth?monthLabel(selectedMonth):'Últimos 30 días';
  if(monthLoading){emptyChart('profileChart','profileEmpty','Cargando histórico mensual…');return;}
  if(monthError){emptyChart('profileChart','profileEmpty','No se ha podido cargar este periodo.');return;}
- const comparison=makeProfile(grid);
+ const comparison=makeProfile(rows);
  $('profileCoverage').textContent=comparison.weekdayDays+' días laborables · '+comparison.weekendDays+' días de fin de semana';
  if(!comparison.series.length){
   emptyChart('profileChart','profileEmpty','Se necesitan al menos 3 jornadas por tipo de día para mostrar patrones fiables.');
@@ -272,12 +257,13 @@ function profile(grid){
    plugins:{
     legend:{display:true,position:'bottom',labels:{usePointStyle:true,boxWidth:8,padding:18,color:'#71839a',font:{size:11}}},
     tooltip:{callbacks:{
+     title:items=>String(items[0].parsed.x).padStart(2,'0')+':00',
      label:item=>item.dataset.label+': '+number(item.parsed.y)+' personas',
      afterLabel:item=>item.raw.days+' jornadas con datos a esa hora'
     }}
    },
    scales:{
-    x:{type:'category',grid:{display:false},ticks:{maxTicksLimit:10,color:'#8b98ab',font:{size:10}}},
+    x:{type:'linear',min:6,max:23,grid:{display:false},ticks:{maxTicksLimit:10,stepSize:2,color:'#8b98ab',font:{size:10},callback:value=>String(value).padStart(2,'0')+':00'}},
     y:{beginAtZero:true,grid:{color:'#eaf0f7'},ticks:{precision:0,color:'#8b98ab',font:{size:10}}}
    }
   }
@@ -346,7 +332,7 @@ function renderAnalytics(){
  trend();
  const pattern=patternRows();
  const grid=hourlyBuckets(pattern);
- profile(grid);
+ profile(pattern);
  heat(grid);
  recommendations(grid);
 }
