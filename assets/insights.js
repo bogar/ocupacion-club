@@ -41,7 +41,13 @@ function hourlyHistory(rows,now){
 function usual(current,history,now){
  const root=$('usualResult'),foot=$('usualCoverage');
  root.replaceChildren();
- if(!current){root.append(el('strong','','Sin lecturas recientes'));return;}
+ if(!current||now.getTime()-current.time.getTime()>25*60000){
+  root.dataset.state='pending';
+  root.append(el('strong','','No hay una lectura suficientemente reciente'));
+  root.append(el('span','','La comparación se retomará cuando vuelva a actualizarse la ocupación.'));
+  foot.textContent='Las referencias históricas no sustituyen el dato actual.';
+  return;
+ }
  const currentKey=info(current.time);
  const refs=history.get(currentKey.weekday+'-'+currentKey.hour)||[];
  if(refs.length<3){
@@ -99,6 +105,9 @@ function sparkline(current,rows){
   return;
  }
  const end=current.time.getTime(),start=end-2*3600000;
+ if(Date.now()-end>25*60000){
+  hint.textContent='Hasta la última lectura disponible';
+ }
  const points=rows.filter(r=>r.time.getTime()>=start&&r.time.getTime()<=end);
  if(!points.some(r=>r.time.getTime()===end))points.push(current);
  points.sort((a,b)=>a.time-b.time);
@@ -134,7 +143,7 @@ function sparkline(current,rows){
  }
  const last=xy.at(-1);
  add('circle',{cx:last[0].toFixed(2),cy:last[1].toFixed(2),r:3.7,fill:'#2e79c2'});
- hint.textContent=num(min)+' – '+num(max)+' personas';
+ if(Date.now()-end<=25*60000)hint.textContent=num(min)+' – '+num(max)+' personas';
 }
 function render(){
  const state=window.OCUPACION_STATE;
