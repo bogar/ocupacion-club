@@ -193,7 +193,7 @@ async function monthly(){
   $('monthlyScope').textContent='Últimos '+months.length+' meses cerrados';
   if(typeof Chart==='undefined'){
    $('monthlyChart').hidden=true;$('monthlyEmpty').hidden=false;
-   $('monthlyEmpty').textContent='No se pudo cargar la biblioteca de gráficos.';return;
+   $('monthlyEmpty').textContent='Preparando gráfico mensual…';return;
   }
   monthlyChart=new Chart($('monthlyChart'),{
    type:'bar',
