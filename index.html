@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="assets/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" defer></script>
   <script src="assets/app.js" defer></script>
+  <script src="assets/insights.js" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -35,6 +36,10 @@
           <span class="trend-pill" id="trendValue">↗ Tendencia pendiente</span>
           <span class="trend-caption" id="trendContext">Comparación con hace unos 15 min</span>
         </div>
+        <div class="sparkline-wrap" aria-label="Evolución de la ocupación durante las últimas dos horas">
+          <div class="sparkline-heading"><strong>Últimas 2 horas</strong><span id="sparklineHint">Esperando lecturas</span></div>
+          <svg id="sparkline" class="sparkline" viewBox="0 0 400 64" role="img" aria-label="Evolución reciente" preserveAspectRatio="none"></svg>
+        </div>
         <div class="current-footer"><span class="small-dot" aria-hidden="true"></span><span id="ageHint">Los datos se actualizan cuando se publica una lectura válida.</span></div>
       </article>
 
@@ -52,6 +57,21 @@
       <article class="mini-stat"><div class="metric-label">Máximo de hoy</div><div class="metric-value" id="maxToday">—</div><div class="metric-note" id="maxTodayNote">Sin registros</div></article>
       <article class="mini-stat"><div class="metric-label">Mínimo de hoy</div><div class="metric-value" id="minToday">—</div><div class="metric-note" id="minTodayNote">Sin registros</div></article>
       <article class="mini-stat"><div class="metric-label">Lecturas recientes</div><div class="metric-value" id="totalReadings">—</div><div class="metric-note" id="totalNote">Hasta 60 días</div></article>
+    </section>
+
+    <section class="intelligence-grid" aria-label="Comparaciones y previsión">
+      <article class="panel intelligence-card">
+        <div class="eyebrow muted">Contexto actual</div>
+        <h2>¿Más o menos gente de lo habitual?</h2>
+        <div class="usual-result" id="usualResult" aria-live="polite"><strong>Recopilando referencias</strong><span>Necesitamos varios días comparables para calcular la diferencia.</span></div>
+        <p class="intelligence-footnote" id="usualCoverage">Se comparan días de la semana y horas equivalentes.</p>
+      </article>
+      <article class="panel intelligence-card">
+        <div class="eyebrow muted">Planifica la siguiente visita</div>
+        <h2>Próximas horas</h2>
+        <div id="forecastList" class="forecast-list" aria-live="polite"><p class="muted-copy">Recopilando histórico para calcular estimaciones orientativas.</p></div>
+        <p class="intelligence-footnote" id="forecastNote">Estimaciones basadas en jornadas anteriores, no mediciones futuras.</p>
+      </article>
     </section>
 
     <section class="panel section-panel" id="history" aria-labelledby="trendTitle">
@@ -77,6 +97,15 @@
       </div>
       <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Evolución de las lecturas o de las medias de ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
       <div class="footline"><span id="chartCaption">Horas locales de España peninsular</span><span id="chartCount">Sin lecturas</span></div>
+    </section>
+
+    <section class="panel section-panel monthly-section" id="monthly" aria-labelledby="monthlyTitle">
+      <div class="section-header">
+        <div><div class="eyebrow muted">Evolución estacional</div><h2 id="monthlyTitle">Comparativa entre meses</h2><p class="section-subtitle">Media diaria de los meses cerrados. Los periodos incompletos se identifican por su cobertura.</p></div>
+        <span class="scope-pill" id="monthlyScope">Histórico completo</span>
+      </div>
+      <div class="monthly-chart-box"><canvas id="monthlyChart" role="img" aria-label="Comparación de la ocupación media mensual"></canvas><div class="chart-empty" id="monthlyEmpty">Los primeros meses aparecerán cuando finalice el mes.</div></div>
+      <div class="footline"><span id="monthlyCaption">Cada media mensual da el mismo peso a cada día con lecturas.</span><span id="monthlyCoverage"></span></div>
     </section>
 
     <section class="panel section-panel" id="patterns" aria-labelledby="patternsTitle">
