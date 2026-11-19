@@ -205,3 +205,20 @@ footer{font-size:11px;color:#8a99ae;border-top:1px solid #e0e8f2;padding-top:19p
  .monthly-chart-box{height:220px}
  .sparkline{height:48px}
 }
+
+/* Vista rápida: situación actual, tendencias y gráfico de dos horas. */
+.view-toggle{border:1px solid #d6e3f3;background:#fff;color:#285581;border-radius:20px;padding:9px 13px;cursor:pointer;font-size:12px;font-weight:750;white-space:nowrap}
+.view-toggle[aria-pressed="true"]{background:#234e79;border-color:#234e79;color:#fff}
+.view-toggle:hover{box-shadow:0 2px 12px #20487522}
+body.quick-mode .hero-grid{grid-template-columns:1fr}
+body.quick-mode .current-card{max-width:860px;width:100%;margin:0 auto}
+body.quick-mode .hero-grid .insight-card,
+body.quick-mode .stat-grid,
+body.quick-mode .intelligence-grid,
+body.quick-mode .section-panel,
+body.quick-mode .method-note{display:none}
+@media(max-width:520px){
+ .header-actions{gap:8px}
+ .view-toggle{padding:9px 11px}
+ body.quick-mode .current-card{padding:21px}
+}
