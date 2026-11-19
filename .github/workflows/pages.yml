@@ -5,7 +5,8 @@ on:
     paths:
       - index.html
       - assets/**
-      - data/ocupacion.csv
+      # El publicador escribe primero el CSV y después latest.json.
+      # Así desplegamos una sola vez por lectura, cuando ambos archivos están actualizados.
       - data/latest.json
       - data/archivo/**
       - .github/workflows/pages.yml
