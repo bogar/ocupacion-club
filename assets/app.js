@@ -28,7 +28,7 @@ function metrics(){
  $("currentCount").textContent=number(last.people);$("lastUpdate").textContent="Última lectura: "+format.format(last.time);
  $("ageHint").textContent=minutes<60?"Hace "+minutes+" min":"Hace "+Math.floor(minutes/60)+" h "+minutes%60+" min";
  $("footerStamp").textContent="Último registro: "+format.format(last.time);
- status(minutes<45?"Datos recientes":"Datos desactualizados",minutes<45?"ok":"warning");
+ status(minutes<20?"Datos recientes":"Datos desactualizados",minutes<20?"ok":"warning");
  const seven=data.filter(x=>x.time>=new Date(now-7*86400000));
  if(seven.length){$("avg7").textContent=number(Math.round(avg(seven.map(x=>x.people))));$("avg7Note").textContent="Personas por lectura";}
  const today=info(now).day, samples=data.filter(x=>info(x.time).day===today);
