@@ -40,23 +40,80 @@ function parse(csv){
  }).filter(Boolean).sort((a,b)=>a.time-b.time);
 }
 const archiveMonths=new Set(), archiveData=new Map();
-let data=[], lastCsv=null, selectedMonth=null, period=1;
+let data=[], lastCsv=null, latestSnapshot=null, selectedMonth=null, period=1;
 let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
 
 function status(text,state){$('statusText').textContent=text;$('status').dataset.state=state;}
+// La cifra actual se obtiene del JSON mínimo cuando existe, o del CSV
+// reciente como respaldo. Nunca sustituimos un dato nuevo por otro antiguo.
+function currentReading(){
+ const lastCsvReading=data.at(-1)||null;
+ if(!latestSnapshot)return lastCsvReading;
+ if(!lastCsvReading||latestSnapshot.time.getTime()>=lastCsvReading.time.getTime())return latestSnapshot;
+ return lastCsvReading;
+}
+function parseLatest(value){
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('latest.json no válido');
+ if(Object.keys(value).length!==2||
+    !Object.prototype.hasOwnProperty.call(value,'people')||
+    !Object.prototype.hasOwnProperty.call(value,'timestamp'))throw Error('Campos inesperados en latest.json');
+ if(!Number.isSafeInteger(value.people)||value.people<0||
+    typeof value.timestamp!=='string')throw Error('Lectura no válida en latest.json');
+ const time=new Date(value.timestamp);
+ if(!Number.isFinite(time.getTime())||time.toISOString()!==value.timestamp||
+    time.getTime()>Date.now()+300000)throw Error('Fecha no válida en latest.json');
+ return {time,people:value.people};
+}
+function updateOccupancyTrend(latest){
+ const wrapper=$('occupancyTrend'),pill=$('trendValue'),caption=$('trendContext');
+ if(!latest){
+  wrapper.dataset.direction='pending';
+  pill.textContent='↗ Tendencia pendiente';
+  caption.textContent='Esperando lecturas para comparar';
+  return;
+ }
+ const target=latest.time.getTime()-15*60000;
+ // Solo comparar con una lectura de hace aproximadamente 15 minutos.
+ // Las interrupciones grandes no deben parecer un cambio en 15 minutos.
+ const candidates=data.filter(row=>{
+  const t=row.time.getTime();
+  return t<latest.time.getTime() && Math.abs(t-target)<=5*60000;
+ });
+ if(!candidates.length){
+  wrapper.dataset.direction='pending';
+  pill.textContent='↗ Tendencia pendiente';
+  caption.textContent='Sin lectura comparable hace unos 15 min';
+  return;
+ }
+ const reference=candidates.reduce((best,row)=>
+  Math.abs(row.time.getTime()-target)<Math.abs(best.time.getTime()-target)?row:best);
+ const difference=latest.people-reference.people;
+ const elapsed=Math.round((latest.time.getTime()-reference.time.getTime())/60000);
+ const direction=difference>0?'up':difference<0?'down':'flat';
+ wrapper.dataset.direction=direction;
+ pill.textContent=difference>0?'↑ +'+number(difference)+' personas':
+                  difference<0?'↓ '+number(Math.abs(difference))+' personas':
+                  '→ Sin cambios';
+ caption.textContent='respecto a hace '+elapsed+' min';
+}
 function liveMetrics(){
  $('totalReadings').textContent=number(data.length);
  $('totalNote').textContent=data.length
   ? new Set(data.map(row=>info(row.time).day)).size+' días con lecturas recientes'
   : 'Sin datos';
- if(!data.length){
+ const latest=currentReading();
+ updateOccupancyTrend(latest);
+ if(!latest){
   status('Sin datos','warning');
   $('currentCount').textContent='—';$('lastUpdate').textContent='Esperando primeras lecturas';
   $('ageHint').textContent='No hay una lectura disponible.';
+  $('footerStamp').textContent='';
   for(const id of ['avg7','maxToday','minToday'])$(id).textContent='—';
+  $('avg7Note').textContent='Sin datos suficientes';
+  $('maxTodayNote').textContent='Sin lecturas de hoy';$('minTodayNote').textContent='Sin lecturas de hoy';
   return;
  }
- const now=new Date(),latest=data.at(-1),minutes=Math.max(0,Math.floor((now-latest.time)/60000));
+ const now=new Date(),minutes=Math.max(0,Math.floor((now-latest.time)/60000));
  $('currentCount').textContent=number(latest.people);
  $('lastUpdate').textContent='Última lectura: '+timeFormat.format(latest.time);
  $('ageHint').textContent=minutes<60?'Hace '+minutes+' min':'Hace '+Math.floor(minutes/60)+' h '+minutes%60+' min';
@@ -394,25 +451,45 @@ $('monthSelect').addEventListener('change',event=>{
 });
 
 async function refresh(){
- try{
-  const response=await fetch('data/ocupacion.csv?t='+Date.now(),{cache:'no-store'});
-  if(!response.ok)throw Error('No se pudieron cargar los datos.');
-  const csv=await response.text();
-  if(csv!==lastCsv){
-   data=parse(csv);lastCsv=csv;
+ const [csvResult,jsonResult]=await Promise.allSettled([
+  fetch('data/ocupacion.csv?t='+Date.now(),{cache:'no-store'}).then(async response=>{
+   if(!response.ok)throw Error('No se pudieron cargar las lecturas históricas');
+   const csv=await response.text();
+   return {csv,readings:csv===lastCsv?null:parse(csv)};
+  }),
+  fetch('data/latest.json?t='+Date.now(),{cache:'no-store'}).then(async response=>{
+   if(!response.ok)throw Error('latest.json no disponible');
+   return parseLatest(await response.json());
+  })
+ ]);
+ let changed=false;
+ if(csvResult.status==='fulfilled'){
+  const {csv,readings}=csvResult.value;
+  if(readings!==null){
+   data=readings;lastCsv=csv;changed=true;
    updateMonthOptions();
-   liveMetrics();renderAnalytics();
-  }else liveMetrics();
- }catch(error){
-  if(lastCsv===null){
-   emptyChart('trendChart','chartEmpty',error.message);
-   emptyChart('profileChart','profileEmpty','Datos no disponibles.');
-   $('lastUpdate').textContent='No se pudieron cargar los datos.';
   }
+ }
+ if(jsonResult.status==='fulfilled'){
+  const next=jsonResult.value;
+  if(!latestSnapshot||next.time.getTime()>latestSnapshot.time.getTime()||
+     (next.time.getTime()===latestSnapshot.time.getTime()&&next.people!==latestSnapshot.people)){
+   latestSnapshot=next;
+  }
+ }
+ // Aunque latest.json tarde en publicarse, seguimos funcionando con el CSV.
+ if(changed)renderAnalytics();
+ liveMetrics();
+ if(csvResult.status==='rejected'&&jsonResult.status==='rejected'){
   status('Error al consultar datos','error');
   $('ageHint').textContent='No se pudo comprobar si hay una actualización.';
+  if(lastCsv===null){
+   emptyChart('trendChart','chartEmpty','No se pudieron cargar las lecturas.');
+   emptyChart('profileChart','profileEmpty','Datos no disponibles.');
+  }
  }
 }
+
 refresh();
 loadArchiveIndex();
 setInterval(refresh,60000);
