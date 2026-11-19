@@ -4,6 +4,26 @@
 const $ = id => document.getElementById(id);
 const zone = 'Europe/Madrid';
 const DAY_MS = 86400000;
+const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/';
+// GitHub Pages stays static. Public, anonymous readings are fetched directly
+// from the repository without requiring a Pages deploy every five minutes.
+async function dataFetch(path,kind='text'){
+ const candidates=[DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
+ let lastError;
+ for(const url of candidates){
+  try{
+   const response=await fetch(url,{cache:'no-store'});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   return kind==='json'?await response.json():await response.text();
+  }catch(error){lastError=error;}
+ }
+ throw lastError||Error('No se pudieron cargar los datos.');
+}
+function mergeReadings(recent,live){
+ const unique=new Map();
+ for(const reading of [...recent,...live])unique.set(reading.time.getTime(),reading);
+ return [...unique.values()].sort((a,b)=>a.time-b.time);
+}
 const names = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const number = n => new Intl.NumberFormat('es-ES',{maximumFractionDigits:0}).format(n);
 const average = values => values.reduce((sum,value)=>sum+value,0)/values.length;
@@ -403,9 +423,7 @@ function updateMonthOptions(){
 }
 async function loadArchiveIndex(){
  try{
-  const response=await fetch('data/archivo/index.json?t='+Date.now(),{cache:'no-store'});
-  if(!response.ok)return;
-  const index=await response.json();
+  const index=await dataFetch('data/archivo/index.json','json');
   if(!Array.isArray(index.months))return;
   archiveMonths.clear();
   for(const month of index.months){
@@ -429,9 +447,7 @@ async function selectMonth(month){
  if(!archiveMonths.has(month)||archiveData.has(month)){renderAnalytics();return;}
  monthLoading=true;renderAnalytics();
  try{
-  const response=await fetch('data/archivo/'+encodeURIComponent(month)+'.csv?t='+Date.now(),{cache:'no-store'});
-  if(!response.ok)throw Error('No se pudo recuperar el archivo mensual.');
-  const parsed=parse(await response.text());
+  const parsed=parse(await dataFetch('data/archivo/'+encodeURIComponent(month)+'.csv'));
   if(selectedMonth!==month)return;
   archiveData.set(month,parsed);
  }catch(error){
@@ -450,37 +466,42 @@ $('monthSelect').addEventListener('change',event=>{
  selectMonth(event.target.value);
 });
 
+function notifyInsights(){
+ if(typeof window==='undefined')return;
+ const current=currentReading();
+ window.OCUPACION_STATE={
+  rows:data.slice(),
+  latest:current?{time:new Date(current.time),people:current.people}:null
+ };
+ window.dispatchEvent(new Event('ocupacion:data'));
+}
 async function refresh(){
- const [csvResult,jsonResult]=await Promise.allSettled([
-  fetch('data/ocupacion.csv?t='+Date.now(),{cache:'no-store'}).then(async response=>{
-   if(!response.ok)throw Error('No se pudieron cargar las lecturas históricas');
-   const csv=await response.text();
-   return {csv,readings:csv===lastCsv?null:parse(csv)};
-  }),
-  fetch('data/latest.json?t='+Date.now(),{cache:'no-store'}).then(async response=>{
-   if(!response.ok)throw Error('latest.json no disponible');
-   return parseLatest(await response.json());
-  })
+ const [recentResult,liveResult,latestResult]=await Promise.allSettled([
+  dataFetch('data/ocupacion.csv'),
+  dataFetch('data/live.csv'),
+  dataFetch('data/latest.json','json').then(parseLatest)
  ]);
  let changed=false;
- if(csvResult.status==='fulfilled'){
-  const {csv,readings}=csvResult.value;
-  if(readings!==null){
-   data=readings;lastCsv=csv;changed=true;
+ if(recentResult.status==='fulfilled'||liveResult.status==='fulfilled'){
+  const recent=recentResult.status==='fulfilled'?parse(recentResult.value):[];
+  const live=liveResult.status==='fulfilled'?parse(liveResult.value):[];
+  const signature=(recentResult.status==='fulfilled'?recentResult.value:'')+'|'+
+                  (liveResult.status==='fulfilled'?liveResult.value:'');
+  if(signature!==lastCsv){
+   data=mergeReadings(recent,live);lastCsv=signature;changed=true;
    updateMonthOptions();
   }
  }
- if(jsonResult.status==='fulfilled'){
-  const next=jsonResult.value;
-  if(!latestSnapshot||next.time.getTime()>latestSnapshot.time.getTime()||
-     (next.time.getTime()===latestSnapshot.time.getTime()&&next.people!==latestSnapshot.people)){
+ if(latestResult.status==='fulfilled'){
+  const next=latestResult.value;
+  if(!latestSnapshot||next.time>latestSnapshot.time||
+     (next.time.getTime()===latestSnapshot.time.getTime()&&next.people!==latestSnapshot.people))
    latestSnapshot=next;
-  }
  }
- // Aunque latest.json tarde en publicarse, seguimos funcionando con el CSV.
  if(changed)renderAnalytics();
  liveMetrics();
- if(csvResult.status==='rejected'&&jsonResult.status==='rejected'){
+ notifyInsights();
+ if(recentResult.status==='rejected'&&liveResult.status==='rejected'&&latestResult.status==='rejected'){
   status('Error al consultar datos','error');
   $('ageHint').textContent='No se pudo comprobar si hay una actualización.';
   if(lastCsv===null){
