@@ -13,7 +13,7 @@
       font-variant-numeric:tabular-nums;text-align:center}
     #count{font-size:clamp(36px,14vw,72px);font-weight:700;line-height:1.1}
     #status{margin-top:8px;font-size:12px;font-weight:500;color:#64748b;line-height:1.3}
-    body[data-state="stale"] #status,body[data-state="error"] #status{color:#b46c33}
+    body[data-state="stale"] #status,body[data-state="error"] #status,body[data-state="estimated"] #status{color:#b46c33}
     @media(prefers-color-scheme:dark){
       body{color:#e8edf7}
       #status{color:#a7b8ce}
@@ -27,69 +27,81 @@
   <script>
     (() => {
       'use strict';
-      // Los datos de Pages pueden quedarse antiguos porque no se vuelve
-      // a desplegar con cada lectura. Consultamos el JSON directamente en GitHub.
-      const URL = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/data/latest.json';
-      const count = document.getElementById('count');
-      const status = document.getElementById('status');
-      const MAX_AGE_MS = 20 * 60 * 1000;
-      let lastValid = null;
-      let inFlight = false;
-
-      function display() {
-        if (!lastValid) return;
-        const age = Date.now() - lastValid.timestamp;
-        if (age > MAX_AGE_MS || age < -5 * 60 * 1000) {
-          document.body.dataset.state = 'stale';
-          count.textContent = '—';
-          count.title = 'Última lectura: ' + new Date(lastValid.timestamp).toLocaleString('es-ES');
-          status.textContent = 'Datos desactualizados';
+      const BASE='https://raw.githubusercontent.com/bogar/ocupacion-club/main/data/';
+      const count=document.getElementById('count');
+      const status=document.getElementById('status');
+      const MAX_AGE_MS=20*60*1000;
+      const madrid=new Intl.DateTimeFormat('en-GB',{
+        timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+      });
+      let lastValid=null,inFlight=false;
+      function inClosure(now=new Date()){
+        const p=Object.fromEntries(madrid.formatToParts(now)
+          .filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+        const minute=Number(p.hour)*60+Number(p.minute);
+        return minute>=1380||minute<=330;
+      }
+      async function get(path){
+        const response=await fetch(BASE+path+'?t='+Date.now(),{cache:'no-store'});
+        if(!response.ok)throw Error('HTTP '+response.status);
+        return response.json();
+      }
+      function display(){
+        if(!lastValid)return;
+        const age=Date.now()-lastValid.timestamp;
+        const recent=age>=-5*60000&&age<=MAX_AGE_MS;
+        const estimated=lastValid.estimated;
+        const valid=recent&&(!estimated||inClosure());
+        count.title=(estimated?'Última estimación: ':'Última lectura: ')+
+          new Date(lastValid.timestamp).toLocaleString('es-ES');
+        if(!valid){
+          document.body.dataset.state='stale';
+          count.textContent='—';
+          status.textContent=estimated?'Esperando lectura real tras el cierre':'Datos desactualizados';
           return;
         }
-        document.body.dataset.state = 'ok';
-        count.textContent = String(lastValid.people);
-        count.title = 'Última lectura: ' + new Date(lastValid.timestamp).toLocaleString('es-ES');
-        status.textContent = age < 60000 ? 'Actualizado hace menos de 1 min' :
-          'Actualizado hace ' + Math.floor(age / 60000) + ' min';
-      }
-
-      async function update() {
-        if (inFlight) return;
-        inFlight = true;
-        try {
-          const response = await fetch(URL + '?t=' + Date.now(), { cache: 'no-store' });
-          if (!response.ok) throw new Error('HTTP ' + response.status);
-          const result = await response.json();
-          if (!result || typeof result !== 'object' || Array.isArray(result) ||
-              Object.keys(result).length !== 2 ||
-              !Number.isSafeInteger(result.people) || result.people < 0 ||
-              typeof result.timestamp !== 'string') throw new Error('JSON incorrecto');
-          const timestamp = Date.parse(result.timestamp);
-          if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== result.timestamp)
-            throw new Error('Fecha inválida');
-          if (!lastValid || timestamp >= lastValid.timestamp) {
-            lastValid = { people: result.people, timestamp };
-          }
-          display();
-        } catch (error) {
-          display();
-          if (!lastValid || Date.now() - lastValid.timestamp > MAX_AGE_MS) {
-            document.body.dataset.state = 'error';
-            count.textContent = '—';
-            status.textContent = 'Sin datos recientes';
-          } else {
-            status.textContent += ' · Sin conexión';
-          }
-        } finally {
-          inFlight = false;
+        count.textContent=String(lastValid.people);
+        if(estimated){
+          document.body.dataset.state='estimated';
+          status.textContent='Cierre nocturno · 0 estimado (no medido)';
+        }else{
+          document.body.dataset.state='ok';
+          status.textContent=age<60000?'Actualizado hace menos de 1 min':
+            'Actualizado hace '+Math.floor(age/60000)+' min';
         }
       }
-
+      async function update(){
+        if(inFlight)return;
+        inFlight=true;
+        try{
+          const [data,meta]=await Promise.all([
+            get('latest.json'),
+            get('reading-status.json').catch(()=>null)
+          ]);
+          if(!data||typeof data!=='object'||Array.isArray(data)||
+             Object.keys(data).length!==2||!Number.isSafeInteger(data.people)||
+             data.people<0||typeof data.timestamp!=='string')throw Error('JSON inválido');
+          const timestamp=Date.parse(data.timestamp);
+          if(!Number.isFinite(timestamp)||
+             new Date(timestamp).toISOString()!==data.timestamp)throw Error('Fecha inválida');
+          const estimated=!!meta&&meta.mode==='estimated_closed'&&
+            meta.timestamp===data.timestamp;
+          if(!lastValid||timestamp>=lastValid.timestamp){
+            lastValid={people:data.people,timestamp,estimated};
+          }
+          display();
+        }catch(error){
+          display();
+          if(!lastValid||Date.now()-lastValid.timestamp>MAX_AGE_MS){
+            document.body.dataset.state='error';
+            count.textContent='—';
+            status.textContent='Sin datos recientes';
+          }else status.textContent+=' · Sin conexión';
+        }finally{inFlight=false;}
+      }
       update();
-      setInterval(() => { display(); update(); }, 60 * 1000);
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) update();
-      });
+      setInterval(()=>{display();update();},60000);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)update();});
     })();
   </script>
 </body>
