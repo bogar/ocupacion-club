@@ -8,7 +8,10 @@ const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/'
 // GitHub Pages stays static. Public, anonymous readings are fetched directly
 // from the repository without requiring a Pages deploy every five minutes.
 async function dataFetch(path,kind='text'){
- const candidates=[DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
+ // No recurrimos a una copia antigua de Pages para el dato actual.
+ const live=path==='data/latest.json'||path==='data/live.csv';
+ const candidates=live?[DATA_ROOT+path+'?t='+Date.now()]:
+  [DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
  let lastError;
  for(const url of candidates){
   try{
@@ -60,7 +63,10 @@ function parse(csv){
  }).filter(Boolean).sort((a,b)=>a.time-b.time);
 }
 const archiveMonths=new Set(), archiveData=new Map();
-let data=[], lastCsv=null, latestSnapshot=null, selectedMonth=null, period=1;
+let data=[], latestSnapshot=null, selectedMonth=null, period=1;
+let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
+let historyLoaded=false,historyInFlight=null,liveInFlight=null;
+let quickMode=false;
 let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
 
 function status(text,state){$('statusText').textContent=text;$('status').dataset.state=state;}
@@ -485,49 +491,93 @@ function notifyInsights(){
  if(typeof window==='undefined')return;
  const current=currentReading();
  window.OCUPACION_STATE={
-  rows:data.slice(),
+  rows:data,
   latest:current?{time:new Date(current.time),people:current.people}:null
  };
  window.dispatchEvent(new Event('ocupacion:data'));
 }
-async function refresh(){
- const [recentResult,liveResult,latestResult]=await Promise.allSettled([
-  dataFetch('data/ocupacion.csv'),
-  dataFetch('data/live.csv'),
-  dataFetch('data/latest.json','json').then(parseLatest)
- ]);
- let changed=false;
- if(recentResult.status==='fulfilled'||liveResult.status==='fulfilled'){
-  const recent=recentResult.status==='fulfilled'?parse(recentResult.value):[];
-  const live=liveResult.status==='fulfilled'?parse(liveResult.value):[];
-  const signature=(recentResult.status==='fulfilled'?recentResult.value:'')+'|'+
-                  (liveResult.status==='fulfilled'?liveResult.value:'');
-  if(signature!==lastCsv){
-   data=mergeReadings(recent,live);lastCsv=signature;changed=true;
-   updateMonthOptions();
-  }
- }
- if(latestResult.status==='fulfilled'){
-  const next=latestResult.value;
-  if(!latestSnapshot||next.time>latestSnapshot.time||
-     (next.time.getTime()===latestSnapshot.time.getTime()&&next.people!==latestSnapshot.people))
-   latestSnapshot=next;
- }
- if(changed)renderAnalytics();
+function rebuildReadings(){
+ data=mergeReadings(recentRows,liveRows);
+ updateMonthOptions();
+ if(!quickMode)renderAnalytics();
  liveMetrics();
  notifyInsights();
- if(recentResult.status==='rejected'&&liveResult.status==='rejected'&&latestResult.status==='rejected'){
-  status('Error al consultar datos','error');
-  $('ageHint').textContent='No se pudo comprobar si hay una actualización.';
-  if(lastCsv===null){
-   emptyChart('trendChart','chartEmpty','No se pudieron cargar las lecturas.');
-   emptyChart('profileChart','profileEmpty','Datos no disponibles.');
-  }
+}
+function setQuickMode(enabled){
+ quickMode=!!enabled;
+ document.body.classList.toggle('quick-mode',quickMode);
+ const button=$('viewToggle');
+ button.textContent=quickMode?'Vista completa':'Vista rápida';
+ button.setAttribute('aria-pressed',String(quickMode));
+ button.title=quickMode?'Mostrar estadísticas e histórico':'Mostrar únicamente ocupación y tendencias';
+ try{localStorage.setItem('ocupacion:quick',quickMode?'1':'0');}catch(e){}
+ window.OCUPACION_VIEW_QUICK=quickMode;
+ window.dispatchEvent(new Event('ocupacion:view'));
+ if(!quickMode){
+  if(!historyLoaded)ensureHistory();
+  else renderAnalytics();
+  loadArchiveIndex();
  }
+}
+let savedQuick=false;
+try{savedQuick=localStorage.getItem('ocupacion:quick')==='1';}catch(e){}
+$('viewToggle').addEventListener('click',()=>setQuickMode(!quickMode));
+setQuickMode(savedQuick);
+async function ensureHistory(force=false){
+ if(quickMode)return;
+ if(historyInFlight)return historyInFlight;
+ if(historyLoaded&&!force)return;
+ historyInFlight=(async()=>{
+  try{
+   const csv=await dataFetch('data/ocupacion.csv');
+   if(csv!==recentSignature){
+    recentRows=parse(csv);
+    recentSignature=csv;
+    rebuildReadings();
+   }
+   historyLoaded=true;
+  }catch(e){
+   if(!historyLoaded)$('chartCaption').textContent='Histórico temporalmente no disponible.';
+  }
+ })().finally(()=>{historyInFlight=null;});
+ return historyInFlight;
+}
+function acceptLatest(row){
+ if(!latestSnapshot||row.time>latestSnapshot.time||
+    (row.time.getTime()===latestSnapshot.time.getTime()&&row.people!==latestSnapshot.people))
+  latestSnapshot=row;
+ liveMetrics();notifyInsights();
+}
+// 1: latest.json. 2: ventana de 26h. 3: histórico bajo demanda.
+async function refresh(){
+ if(liveInFlight)return liveInFlight;
+ liveInFlight=(async()=>{
+  const results=await Promise.allSettled([
+   dataFetch('data/latest.json','json').then(parseLatest).then(acceptLatest),
+   dataFetch('data/live.csv').then(csv=>{
+    if(csv!==liveSignature){
+     liveRows=parse(csv);
+     liveSignature=csv;
+     rebuildReadings();
+    }
+   })
+  ]);
+  const bothFailed=results.every(r=>r.status==='rejected');
+  if(bothFailed){
+   status('Sin conexión con los datos','error');
+   $('ageHint').textContent='No se pudo verificar una nueva lectura; consulta la hora indicada.';
+  }else{
+   liveMetrics();
+   notifyInsights();
+  }
+  if(!quickMode&&!historyLoaded&&!historyInFlight)
+   setTimeout(()=>ensureHistory(),150);
+ })().finally(()=>{liveInFlight=null;});
+ return liveInFlight;
 }
 
 refresh();
-loadArchiveIndex();
 setInterval(refresh,60000);
-setInterval(loadArchiveIndex,300000);
+setInterval(()=>{if(!quickMode)ensureHistory(true);},3600000);
+setInterval(()=>{if(!quickMode)loadArchiveIndex();},300000);
 })();
