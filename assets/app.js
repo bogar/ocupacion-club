@@ -66,7 +66,7 @@ const archiveMonths=new Set(), archiveData=new Map();
 let data=[], latestSnapshot=null, selectedMonth=null, period=1;
 let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
 let historyLoaded=false,historyInFlight=null,liveInFlight=null;
-let quickMode=false;
+let quickMode=false,initializing=true;
 let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
 
 function status(text,state){$('statusText').textContent=text;$('status').dataset.state=state;}
@@ -513,7 +513,7 @@ function setQuickMode(enabled){
  try{localStorage.setItem('ocupacion:quick',quickMode?'1':'0');}catch(e){}
  window.OCUPACION_VIEW_QUICK=quickMode;
  window.dispatchEvent(new Event('ocupacion:view'));
- if(!quickMode){
+ if(!quickMode&&!initializing){
   if(!historyLoaded)ensureHistory();
   else renderAnalytics();
   loadArchiveIndex();
@@ -523,6 +523,7 @@ let savedQuick=false;
 try{savedQuick=localStorage.getItem('ocupacion:quick')==='1';}catch(e){}
 $('viewToggle').addEventListener('click',()=>setQuickMode(!quickMode));
 setQuickMode(savedQuick);
+initializing=false;
 async function ensureHistory(force=false){
  if(quickMode)return;
  if(historyInFlight)return historyInFlight;
