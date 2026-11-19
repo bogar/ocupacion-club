@@ -149,10 +149,13 @@ function render(){
  const state=window.OCUPACION_STATE;
  if(!state)return;
  latestState=state;
- const now=new Date(),history=hourlyHistory(state.rows,now);
+ const now=new Date();
+ sparkline(state.latest,state.rows);
+ // Las estadísticas históricas se calculan solo al abrir la vista completa.
+ if(window.OCUPACION_VIEW_QUICK)return;
+ const history=hourlyHistory(state.rows,now);
  usual(state.latest,history,now);
  forecast(history,now);
- sparkline(state.latest,state.rows);
 }
 function archiveLabel(value){
  const t=monthFormatter.format(new Date(value+'-15T12:00:00.000Z'));
@@ -169,6 +172,7 @@ async function dataJson(path){
  throw Error('No disponible');
 }
 async function monthly(){
+ if(window.OCUPACION_VIEW_QUICK)return;
  try{
   const summary=await dataJson('data/archivo/resumen.json');
   if(!Array.isArray(summary.months))throw Error('Resumen no válido');
@@ -220,6 +224,9 @@ async function monthly(){
  }
 }
 window.addEventListener('ocupacion:data',render);
+window.addEventListener('ocupacion:view',()=>{
+ if(!window.OCUPACION_VIEW_QUICK){render();monthly();}
+});
 render();
 monthly();
 setInterval(monthly,15*60000);
