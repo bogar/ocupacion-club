@@ -51,19 +51,20 @@
         const age=Date.now()-lastValid.timestamp;
         const recent=age>=-5*60000&&age<=MAX_AGE_MS;
         const estimated=lastValid.estimated;
-        const valid=recent&&(!estimated||inClosure());
+        const valid=recent&&(lastValid.mode!=='estimated_closed'||inClosure());
         count.title=(estimated?'Última estimación: ':'Última lectura: ')+
           new Date(lastValid.timestamp).toLocaleString('es-ES');
         if(!valid){
           document.body.dataset.state='stale';
           count.textContent='—';
-          status.textContent=estimated?'Esperando lectura real tras el cierre':'Datos desactualizados';
+          status.textContent=estimated?'Esperando nueva lectura real':'Datos desactualizados';
           return;
         }
         count.textContent=String(lastValid.people);
         if(estimated){
           document.body.dataset.state='estimated';
-          status.textContent='Cierre nocturno · 0 estimado (no medido)';
+          status.textContent=lastValid.mode==='estimated_missing'?
+            'Sin ocupación publicada · 0 estimado':'Cierre nocturno · 0 estimado (no medido)';
         }else{
           document.body.dataset.state='ok';
           status.textContent=age<60000?'Actualizado hace menos de 1 min':
@@ -84,10 +85,11 @@
           const timestamp=Date.parse(data.timestamp);
           if(!Number.isFinite(timestamp)||
              new Date(timestamp).toISOString()!==data.timestamp)throw Error('Fecha inválida');
-          const estimated=!!meta&&meta.mode==='estimated_closed'&&
-            meta.timestamp===data.timestamp;
+          const mode=meta&&meta.timestamp===data.timestamp?
+            meta.mode:'unverified';
+          const estimated=mode==='estimated_closed'||mode==='estimated_missing';
           if(!lastValid||timestamp>=lastValid.timestamp){
-            lastValid={people:data.people,timestamp,estimated};
+            lastValid={people:data.people,timestamp,estimated,mode};
           }
           display();
         }catch(error){
