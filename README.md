@@ -32,13 +32,17 @@ La lectura más reciente también se publica por separado en [`data/latest.json`
 
 La fecha es UTC en formato ISO 8601. El archivo es accesible desde `https://bogar.github.io/ocupacion-club/data/latest.json` una vez desplegado Pages. No incluye el nombre del centro ni ningún identificador.
 
-## Publicar con GitHub Pages
+## Publicación de la web y de los datos
 
-En **Settings > Pages > Build and deployment**, seleccionar **GitHub Actions** como origen. El workflow `.github/workflows/pages.yml` despliega el panel tras cambios visuales, del archivo mensual o de `latest.json`. El publicador escribe primero el CSV y después el JSON, por lo que el cambio del JSON activa **una única publicación por lectura**; no hacen falta dos despliegues por intervalo. El panel permanece en `https://bogar.github.io/ocupacion-club/`.
+En **Settings > Pages > Build and deployment**, seleccionar **GitHub Actions** como origen. El workflow `.github/workflows/pages.yml` despliega el sitio **solo cuando cambian el código o el diseño**. La lectura más reciente se actualiza en GitHub sin reconstruir Pages.
+
+La web solicita los CSV y JSON públicos directamente a `raw.githubusercontent.com/bogar/ocupacion-club/main/data/...` con una segunda opción al mismo dominio de Pages si el primero no está disponible. El CDN de GitHub puede introducir varios minutos de caché, por lo que la web siempre indica la antigüedad de la lectura, no promete inmediatez absoluta.
+
+La dirección del panel permanece en `https://bogar.github.io/ocupacion-club/`.
 
 ## Actualización de datos
 
-La web no gestiona accesos ni consulta sistemas privados. Lee la última lectura del JSON, las series de datos del CSV reciente y los archivos mensuales publicados en este repositorio. El sistema que recopila las lecturas es independiente y debe publicar **únicamente** dos campos: `timestamp` en UTC e `people` como entero. No se deben publicar nombres de centros, URLs privadas, identificadores de sesión ni credenciales.
+La web no gestiona accesos ni consulta sistemas privados. Lee la última lectura del JSON, la ventana móvil `data/live.csv`, el CSV de 60 días y los archivos mensuales publicados en este repositorio. El sistema que recopila las lecturas es independiente y debe publicar **únicamente** dos campos: `timestamp` en UTC e `people` como entero. No se deben publicar nombres de centros, URLs privadas, identificadores de sesión ni credenciales.
 
 Si no hay lecturas, la página muestra un estado sin datos. Los colores del mapa de calor son **relativos al histórico disponible**, no porcentajes de aforo ni de capacidad máxima.
 
@@ -59,10 +63,23 @@ No se elimina ningún mes archivado automáticamente. Cada mes terminado se publ
 
 Se trata de personas observadas en las consultas disponibles, **no** de porcentajes de aforo ni de estimaciones oficiales de capacidad. Las medias y máximos de los gráficos resumidos se refieren solamente a muestras reales del intervalo. Las franjas sin registros aparecen vacías. El mapa de calor utiliza una escala relativa al periodo, que puede cambiar de un mes a otro.
 
-El panel no descarga todos los años a la vez: carga primero el CSV reciente (hasta 60 días) y después el archivo mensual seleccionado, si es necesario. Los gráficos agrupan cientos o miles de muestras en un número manejable de puntos, pero el CSV original del mes conserva cada lectura. La web refresca `latest.json` y el CSV reciente cada minuto, y el índice de meses cada cinco minutos. Si no está disponible el JSON, utiliza el último registro del CSV. No requiere base de datos, cookies, analítica ni almacenar datos en el navegador.
+El panel no descarga todos los años a la vez: carga primero el CSV reciente (hasta 60 días) y después el archivo mensual seleccionado, si es necesario. Los gráficos agrupan cientos o miles de muestras en un número manejable de puntos, pero el CSV original del mes conserva cada lectura. La web refresca `latest.json`, `live.csv` y el CSV de 60 días cada minuto, y el índice de meses cada cinco minutos. Si no está disponible el JSON, utiliza el último registro del CSV. No requiere base de datos, cookies, analítica ni almacenar datos en el navegador.
 
 **Revisión de interfaz:** 19/11/2026. Para cualquier ajuste del sistema de captura, consultar el repositorio privado independiente.
 
 ## Tendencia de ocupación
 
 La tarjeta principal compara la última lectura con el registro más cercano a 15 minutos antes (se admite una diferencia de hasta 5 minutos). Si hay referencias comparables, aparece una flecha con el cambio **absoluto de personas** y los minutos reales transcurridos. Las subidas se muestran en ámbar, las bajadas en verde y los valores sin cambio en azul. Si faltan lecturas para esa ventana, indica que la tendencia está pendiente en lugar de deducir una cifra inexacta. No se trata de una predicción.
+
+## Nuevos paneles inteligentes
+
+- **Últimas dos horas**: curva de lecturas observadas en la tarjeta principal, con interrupciones visibles cuando faltan registros.
+- **Comparación con lo habitual**: la lectura actual se compara con la media de la misma hora y día de la semana de otros días. Se necesitan **al menos tres jornadas** de referencia; el día actual no se utiliza para calcular la media.
+- **Próximas horas**: hasta cuatro estimaciones basadas en esa misma combinación de día y hora, solo cuando existen al menos tres jornadas comparables. No son mediciones ni predicciones garantizadas.
+- **Meses anteriores**: `data/archivo/resumen.json` permite mostrar la media mensual de hasta 12 meses cerrados, con avisos de cobertura baja. Cada media mensual se obtiene promediando las medias de los días observados.
+
+## Optimización del publicador
+
+El LXC realiza una recogida cada cinco minutos y, mediante la API Git Data, publica `data/latest.json` y `data/live.csv` en **un solo commit**. `live.csv` contiene las últimas 26 horas y cubre la transición entre días. `data/ocupacion.csv` se renueva aproximadamente **una vez al día**, conservando la ventana de 60 días. Los meses cerrados se archivan definitivamente en `data/archivo/`. La copia original completa permanece sin recorte en Proxmox.
+
+El navegador fusiona `data/live.csv` con `data/ocupacion.csv` por timestamp para evitar duplicados. GitHub Pages se construye solo cuando cambia la interfaz, no con cada lectura nueva. Estas medidas reducen considerablemente los archivos reescritos y el consumo de compilaciones.
