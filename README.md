@@ -104,12 +104,12 @@ La URL `https://bogar.github.io/ocupacion-club/assets/ha.html` muestra solamente
 La tarjeta se refresca cada minuto y también cuando vuelve a estar visible. Si una lectura tiene más de 20 minutos, muestra un guion y el aviso **Datos desactualizados**, en lugar de presentar la cifra como actual. Si falla la conexión, informa **Sin datos recientes**. No se necesitan cambios en el contenedor Proxmox para esta tarjeta.
 
 
-## Cierre nocturno provisional (pendiente de confirmar)
+## Consultas nocturnas y ocupación estimada
 
-Entre las **23:00 y las 05:30, horario de Europe/Madrid**, el backend publica cada quince minutos un **0 estimado** sin consultar el proveedor. El resto del día vuelve a consultar cada cinco minutos, desde las **05:35**.
+Entre las **23:00 y las 05:30 (Europe/Madrid)** se consulta la fuente cada **15 minutos**; de **05:35 a 22:55**, cada **5 minutos**.
 
-- `data/latest.json` conserva únicamente `people` y `timestamp`.
-- `data/reading-status.json` indica si la lectura es `"measured"` o `"estimated_closed"`, con el mismo timestamp.
-- El cero nocturno **no se guarda como medición real** en los CSV ni influye en medias, tendencias, gráficos históricos ni predicciones.
-- La web y `assets/ha.html` muestran expresamente **«Cierre nocturno · 0 estimado»**. Fuera de ese horario, si no vuelve a haber una lectura real, indican que se está esperando una lectura, sin prolongar el cierre supuesto.
-- Esta suposición se ha establecido provisionalmente el 19/11/2026 tras observar que la fuente dejó de mostrar la ocupación de noche. No equivale a la confirmación del horario oficial.
+Si se obtiene el dato, se publica como medición real. Si la ficha está disponible pero carece del indicador de ocupación, se publica **0 estimado** y el archivo `data/reading-status.json` contiene `mode: "estimated_missing"`. Los ceros estimados no se guardan en los CSV de lecturas reales ni participan en sus estadísticas.
+
+Los fallos técnicos de acceso o navegación no se convierten en cero. Tanto el panel principal como `assets/ha.html` distinguen explícitamente una **ocupación no publicada** de una medición real.
+
+`data/latest.json` conserva únicamente `people` y `timestamp`, sin nombre ni identificador del centro.
