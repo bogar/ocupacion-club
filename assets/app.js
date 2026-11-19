@@ -69,14 +69,17 @@ function trend(){
 }
 function heat(){
  const buckets=Array.from({length:7},()=>Array.from({length:18},()=>new Map()));
- for(const x of data){const k=info(x.time);if(k.hour<6||k.hour>23)continue;const slot=buckets[k.weekday][k.hour-6],vals=slot.get(k.day)||[];vals.push(x.people);slot.set(k.day,vals);}
+ const relevant=selectedMonth
+  ? (monthLoading||monthError?[]:(archivedData.get(selectedMonth)||data.filter(x=>monthKey(x.time)===selectedMonth)))
+  : data;
+ for(const x of relevant){const k=info(x.time);if(k.hour<6||k.hour>23)continue;const slot=buckets[k.weekday][k.hour-6],vals=slot.get(k.day)||[];vals.push(x.people);slot.set(k.day,vals);}
  const grid=buckets.map(day=>day.map(slot=>({days:slot.size,mean:slot.size?avg([...slot.values()].map(avg)):null})));
  const values=grid.flat().filter(x=>x.mean!==null).map(x=>x.mean),min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):0;
  const target=$("heatmap");target.replaceChildren();
  function cell(text,cls,title){const el=document.createElement("div");el.className=cls;el.textContent=text;if(title){el.title=title;el.setAttribute("aria-label",title);}target.append(el);}
  cell("Día","heat-header heat-day");for(let hour=6;hour<=23;hour++)cell(String(hour).padStart(2,"0"),"heat-header");
  for(let d=0;d<7;d++){cell(names[d].slice(0,3),"heat-day");for(let h=0;h<18;h++){const c=grid[d][h],level=c.mean===null?0:max===min?3:Math.min(5,1+Math.floor((c.mean-min)/(max-min)*4.999));cell(c.mean===null?"·":number(Math.round(c.mean)),"heat-cell heat-"+level,names[d]+" "+(h+6)+":00 · "+(c.mean===null?"Sin datos":number(Math.round(c.mean))+" personas de media, "+c.days+" días"));}}
- $("heatmapCaption").textContent=values.length?"Color relativo al histórico disponible.":"Se irá completando cuando haya más registros.";
+ $("heatmapCaption").textContent=values.length?(selectedMonth?"Media del mes seleccionado.":"Media de los últimos 60 días."):"Sin datos suficientes para el periodo.";
  const rec=$("recommendations");rec.replaceChildren();const best=grid.flatMap((day,d)=>day.map((x,h)=>({...x,d,h:h+6}))).filter(x=>x.days>=3).sort((a,b)=>a.mean-b.mean).slice(0,3);
  if(!best.length){const p=document.createElement("p");p.className="muted-copy";p.textContent="Se necesitan al menos tres días de datos por franja para identificar patrones.";rec.append(p);}
  for(const x of best){const e=document.createElement("article");e.className="recommendation";for(const [tag,text] of [["strong",names[x.d]+" · "+String(x.h).padStart(2,"0")+":00"],["span",number(Math.round(x.mean))+" personas de media"],["small",x.days+" días analizados"]]){const n=document.createElement(tag);n.textContent=text;e.append(n);}rec.append(e);}
@@ -110,9 +113,9 @@ async function refreshArchiveIndex(){
 }
 async function showMonth(month){
  selectedMonth=month||null;monthError=null;monthLoading=false;
- if(!selectedMonth){trend();return;}
- if(!archivedMonths.has(month)||archivedData.has(month)){trend();return;}
- monthLoading=true;trend();
+ if(!selectedMonth){trend();heat();return;}
+ if(!archivedMonths.has(month)||archivedData.has(month)){trend();heat();return;}
+ monthLoading=true;trend();heat();
  try{
   const response=await fetch("data/archivo/"+month+".csv?t="+Date.now(),{cache:"no-store"});
   if(!response.ok)throw Error("No se pudo cargar el archivo de "+month);
@@ -122,13 +125,14 @@ async function showMonth(month){
   archivedData.set(month,parsed);
   monthError=null;
  }catch(error){if(selectedMonth===month)monthError="No se pudo consultar este mes. Inténtalo de nuevo.";}
- finally{if(selectedMonth===month){monthLoading=false;trend();}}
+ finally{if(selectedMonth===month){monthLoading=false;trend();heat();}}
 }
 document.querySelectorAll("[data-days]").forEach(b=>b.addEventListener("click",()=>{
  period=Number(b.dataset.days);selectedMonth=null;monthLoading=false;monthError=null;
  $("monthSelect").value="";
  document.querySelectorAll("[data-days]").forEach(x=>{const selected=x===b;x.classList.toggle("selected",selected);x.setAttribute("aria-pressed",String(selected));});
  trend();
+ heat();
 }));
 $("monthSelect").addEventListener("change",event=>{
  const month=event.target.value;
