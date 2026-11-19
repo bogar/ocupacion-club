@@ -85,7 +85,15 @@ function ensureCharts(){
    window.dispatchEvent(new Event('ocupacion:charts-ready'));
    resolve();
   };
-  script.onerror=()=>reject(Error('No se pudo cargar Chart.js'));
+  script.onerror=()=>{
+   if(!quickMode){
+    const empty=$('chartEmpty');
+    if(!empty.hidden)empty.textContent='No se pudo cargar la biblioteca de gráficos.';
+    const profileEmpty=$('profileEmpty');
+    if(!profileEmpty.hidden)profileEmpty.textContent='No se pudo cargar la biblioteca de gráficos.';
+   }
+   reject(Error('No se pudo cargar Chart.js'));
+  };
   document.head.appendChild(script);
  }).catch(error=>{
   chartsPromise=null;
@@ -267,7 +275,7 @@ function trend(){
  if(monthLoading){emptyChart('trendChart','chartEmpty','Cargando histórico mensual…');return;}
  if(monthError){emptyChart('trendChart','chartEmpty',monthError);return;}
  if(!rows.length){emptyChart('trendChart','chartEmpty','Todavía no hay lecturas para este periodo.');return;}
- if(typeof Chart==='undefined'){emptyChart('trendChart','chartEmpty','No se pudo cargar el gráfico.');return;}
+ if(typeof Chart==='undefined'){emptyChart('trendChart','chartEmpty','Preparando gráfico…');return;}
  const granularity=selectedMonth||period===30?'day':period===7?'hour':'raw';
  const summary=summarize(rows,granularity);
  const aggregate=granularity!=='raw';
@@ -367,7 +375,7 @@ function profile(rows){
   emptyChart('profileChart','profileEmpty','Se necesitan al menos 3 jornadas por tipo de día para mostrar patrones fiables.');
   return;
  }
- if(typeof Chart==='undefined'){emptyChart('profileChart','profileEmpty','No se pudo cargar el gráfico.');return;}
+ if(typeof Chart==='undefined'){emptyChart('profileChart','profileEmpty','Preparando gráfico…');return;}
  $('profileChart').hidden=false;$('profileEmpty').hidden=true;
  profileChart=new Chart($('profileChart'),{
   type:'line',
