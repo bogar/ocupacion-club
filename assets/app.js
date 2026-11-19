@@ -9,7 +9,7 @@ const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/'
 // from the repository without requiring a Pages deploy every five minutes.
 async function dataFetch(path,kind='text'){
  // No recurrimos a una copia antigua de Pages para el dato actual.
- const live=path==='data/latest.json'||path==='data/live.csv';
+ const live=['data/latest.json','data/live.csv','data/reading-status.json'].includes(path);
  const candidates=live?[DATA_ROOT+path+'?t='+Date.now()]:
   [DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
  let lastError;
@@ -68,7 +68,7 @@ function parse(csv){
  }).filter(Boolean).sort((a,b)=>a.time-b.time);
 }
 const archiveMonths=new Set(), archiveData=new Map();
-let data=[], latestSnapshot=null, selectedMonth=null, period=1;
+let data=[], latestSnapshot=null, readingStatus=null, selectedMonth=null, period=1;
 let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
 let historyLoaded=false,historyInFlight=null,liveInFlight=null;
 let quickMode=false,initializing=true;
@@ -125,6 +125,23 @@ function parseLatest(value){
     time.getTime()>Date.now()+300000)throw Error('Fecha no válida en latest.json');
  return {time,people:value.people};
 }
+const madridClock=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+function withinClosure(date=new Date()){
+ const parts=Object.fromEntries(madridClock.formatToParts(date).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+ const minute=Number(parts.hour)*60+Number(parts.minute);
+ return minute>=23*60||minute<=5*60+30;
+}
+function parseReadingStatus(value){
+ if(!value||typeof value!=='object'||!['measured','estimated_closed','unverified'].includes(value.mode))
+  throw Error('Tipo de lectura inválido');
+ if(value.timestamp!==null&&(typeof value.timestamp!=='string'||!Number.isFinite(Date.parse(value.timestamp))))
+  throw Error('Fecha del tipo de lectura inválida');
+ return value;
+}
+function estimatedReading(latest){
+ return !!latest&&readingStatus?.mode==='estimated_closed'&&
+  readingStatus.timestamp===latest.time.toISOString();
+}
 // Cambios absolutos comparados con una lectura cercana a cada intervalo.
 // Los márgenes permiten el ligero desfase de las consultas de 5 minutos,
 // pero nunca se utiliza una lectura de un intervalo sustancialmente distinto.
@@ -178,7 +195,20 @@ function liveMetrics(){
   ? new Set(data.map(row=>info(row.time).day)).size+' días con lecturas recientes'
   : 'Sin datos';
  const latest=currentReading();
- updateOccupancyTrend(latest);
+ const estimated=estimatedReading(latest);
+ updateOccupancyTrend(estimated?null:latest);
+ if(estimated){
+  const now=new Date(),minutes=Math.max(0,Math.floor((now-latest.time)/60000));
+  const valid=withinClosure(now)&&minutes<20;
+  $('currentCount').textContent=valid?'0':'—';
+  $('lastUpdate').textContent='Última estimación: '+timeFormat.format(latest.time);
+  $('ageHint').textContent=valid?'Cierre nocturno: 0 personas asumidas, no medidas.':
+   'Fin del cierre estimado. Esperando una lectura real.';
+  $('footerStamp').textContent='Estimación de cierre: '+timeFormat.format(latest.time);
+  status(valid?'Cierre nocturno · estimado':'Esperando nueva lectura real','warning');
+  // El resto de estadísticas sigue utilizando exclusivamente lecturas reales.
+  return;
+ }
  if(!latest){
   status('Sin datos','warning');
   $('currentCount').textContent='—';$('lastUpdate').textContent='Esperando primeras lecturas';
@@ -527,7 +557,8 @@ function notifyInsights(){
  const current=currentReading();
  window.OCUPACION_STATE={
   rows:data,
-  latest:current?{time:new Date(current.time),people:current.people}:null
+  latest:current&&!estimatedReading(current)?{time:new Date(current.time),people:current.people}:null,
+  estimated:estimatedReading(current)
  };
  window.dispatchEvent(new Event('ocupacion:data'));
 }
@@ -591,6 +622,13 @@ async function refresh(){
  liveInFlight=(async()=>{
   const results=await Promise.allSettled([
    dataFetch('data/latest.json','json').then(parseLatest).then(acceptLatest),
+   dataFetch('data/reading-status.json','json').then(parseReadingStatus).then(next=>{
+    // Nunca retroceder desde un estado más reciente.
+    if(!readingStatus||!readingStatus.timestamp||next.timestamp&&next.timestamp>=readingStatus.timestamp){
+     readingStatus=next;
+     liveMetrics();notifyInsights();
+    }
+   }),
    dataFetch('data/live.csv').then(csv=>{
     if(csv!==liveSignature){
      liveRows=parse(csv);
@@ -599,8 +637,8 @@ async function refresh(){
     }
    })
   ]);
-  const bothFailed=results.every(r=>r.status==='rejected');
-  if(bothFailed){
+  const allFailed=results[0].status==='rejected'&&results[2].status==='rejected';
+  if(allFailed){
    status('Sin conexión con los datos','error');
    $('ageHint').textContent='No se pudo verificar una nueva lectura; consulta la hora indicada.';
   }else{
