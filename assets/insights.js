@@ -180,7 +180,7 @@ async function monthly(){
    Number.isFinite(m.mean)&&Number.isFinite(m.max)&&Number.isInteger(m.days)&&m.days>0)
    .sort((a,b)=>a.month.localeCompare(b.month)).slice(-12);
   const signature=JSON.stringify(months);
-  if(signature===summarySignature)return;
+  if(signature===summarySignature&&monthlyChart)return;
   summarySignature=signature;
   if(monthlyChart){monthlyChart.destroy();monthlyChart=null;}
   if(!months.length){
@@ -224,6 +224,7 @@ async function monthly(){
  }
 }
 window.addEventListener('ocupacion:data',render);
+window.addEventListener('ocupacion:charts-ready',()=>{if(!window.OCUPACION_VIEW_QUICK)monthly();});
 window.addEventListener('ocupacion:view',()=>{
  if(!window.OCUPACION_VIEW_QUICK){render();monthly();}
 });
