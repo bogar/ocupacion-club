@@ -6,6 +6,8 @@ on:
       - index.html
       - assets/**
       - data/ocupacion.csv
+      - data/latest.json
+      - data/archivo/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
