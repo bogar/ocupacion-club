@@ -95,3 +95,10 @@ El navegador fusiona `data/live.csv` con `data/ocupacion.csv` por timestamp para
 - **Caché segura:** para `latest.json` y `live.csv` nunca se utiliza como respaldo la copia del último despliegue de GitHub Pages, que podría estar obsoleta. Si falla la red se conserva la hora conocida y aparece el estado de error, sin fingir que es una lectura actual.
 
 La vista completa sigue incluyendo el historial, el mapa de calor, la comparativa mensual y las recomendaciones.
+
+
+## Tarjeta compacta para Home Assistant
+
+La URL `https://bogar.github.io/ocupacion-club/assets/ha.html` muestra solamente la ocupación actual y la antigüedad de la última lectura, adecuada para una tarjeta tipo iframe. Consulta **`data/latest.json` directamente a través de `raw.githubusercontent.com`**, no el CSV de 60 días, que solo se actualiza diariamente.
+
+La tarjeta se refresca cada minuto y también cuando vuelve a estar visible. Si una lectura tiene más de 20 minutos, muestra un guion y el aviso **Datos desactualizados**, en lugar de presentar la cifra como actual. Si falla la conexión, informa **Sin datos recientes**. No se necesitan cambios en el contenedor Proxmox para esta tarjeta.
