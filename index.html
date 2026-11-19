@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="Visualización del histórico de ocupación de un club.">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Ocupación club</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <div class="identity">
+        <div class="logo" aria-hidden="true"><span class="logo-mark"></span><span class="logo-mark lower"></span></div>
+        <div><div class="eyebrow">Monitor de afluencia</div><h1>Ocupación club</h1></div>
+      </div>
+      <div class="status" id="status" aria-live="polite"><span class="status-dot"></span><span id="statusText">Consultando datos...</span></div>
+    </header>
+    <main>
+      <section class="hero-grid" aria-label="Estado actual">
+        <article class="panel current-card">
+          <div class="panel-overline">Último registro disponible</div>
+          <div class="main-count"><strong id="currentCount">—</strong><span>personas</span></div>
+          <p class="updated" id="lastUpdate">Cargando histórico…</p>
+          <div class="current-footer"><span class="small-dot"></span><span id="ageHint">Los datos se actualizan cuando se publica una lectura válida.</span></div>
+        </article>
+        <article class="panel insight-card">
+          <div class="panel-overline">Consulta de afluencia</div>
+          <h2>Busca un horario <span>más tranquilo.</span></h2>
+          <p>Consulta cómo varía la ocupación y compara las franjas horarias con el histórico disponible.</p>
+          <div class="insight-footnote"><span class="outline-icon">↗</span> Estadísticas basadas en lecturas reales, no en estimaciones.</div>
+        </article>
+      </section>
+      <section class="stat-grid" aria-label="Resumen del histórico">
+        <article class="mini-stat"><div class="metric-label">Media últimos 7 días</div><div class="metric-value" id="avg7">—</div><div class="metric-note" id="avg7Note">Sin registros</div></article>
+        <article class="mini-stat"><div class="metric-label">Máximo de hoy</div><div class="metric-value" id="maxToday">—</div><div class="metric-note" id="maxTodayNote">Sin registros</div></article>
+        <article class="mini-stat"><div class="metric-label">Mínimo de hoy</div><div class="metric-value" id="minToday">—</div><div class="metric-note" id="minTodayNote">Sin registros</div></article>
+        <article class="mini-stat"><div class="metric-label">Lecturas disponibles</div><div class="metric-value" id="totalReadings">—</div><div class="metric-note" id="totalNote">Histórico acumulado</div></article>
+      </section>
+      <section class="panel section-panel" aria-labelledby="trendTitle">
+        <div class="section-header">
+          <div><div class="eyebrow muted">Histórico</div><h2 id="trendTitle">Evolución de la ocupación</h2><p class="section-subtitle">Cada punto representa una lectura registrada.</p></div>
+          <div class="segmented" role="group" aria-label="Periodo"><button class="selected" type="button" data-days="1" aria-pressed="true">Hoy</button><button type="button" data-days="7" aria-pressed="false">7 días</button><button type="button" data-days="30" aria-pressed="false">30 días</button></div>
+        </div>
+        <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Gráfico de evolución de la ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
+        <div class="footline"><span id="chartCaption">Horario local de España peninsular</span><span id="chartCount"></span></div>
+      </section>
+      <section class="panel section-panel" aria-labelledby="heatmapTitle">
+        <div class="section-header">
+          <div><div class="eyebrow muted">Patrones de afluencia</div><h2 id="heatmapTitle">Mapa de calor semanal</h2><p class="section-subtitle">Ocupación media por día de la semana y hora. Los huecos indican ausencia de datos.</p></div>
+          <div class="heatmap-legend" aria-label="Escala de ocupación"><span>Menos gente</span><div class="legend-blocks"><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i></div><span>Más gente</span></div>
+        </div>
+        <div class="heatmap-scroll"><div id="heatmap" class="heatmap" role="table" aria-label="Ocupación media por día y hora"></div></div>
+        <div class="footline"><span id="heatmapCaption">Se irá completando a medida que haya más registros.</span><span>Franjas de 1 hora · 06:00 a 23:00</span></div>
+      </section>
+      <section class="panel section-panel recommendations" aria-labelledby="bestTitle">
+        <div class="section-header"><div><div class="eyebrow muted">A partir del histórico</div><h2 id="bestTitle">Horas habitualmente tranquilas</h2><p class="section-subtitle">Comparación orientativa, disponible cuando haya suficientes días de datos.</p></div></div>
+        <div id="recommendations" class="recommendation-grid"><p class="muted-copy">Recopilando registros para identificar patrones fiables.</p></div>
+      </section>
+    </main>
+    <footer><span>Ocupación club</span><span>Datos orientativos. La ocupación puede variar entre lecturas.</span><span id="footerStamp"></span></footer>
+  </div>
+</body>
+</html>
