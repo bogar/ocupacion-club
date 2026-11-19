@@ -66,5 +66,35 @@ function heat(){
  for(const x of best){const e=document.createElement("article");e.className="recommendation";for(const [tag,text] of [["strong",names[x.d]+" · "+String(x.h).padStart(2,"0")+":00"],["span",number(Math.round(x.mean))+" personas de media"],["small",x.days+" días analizados"]]){const n=document.createElement(tag);n.textContent=text;e.append(n);}rec.append(e);}
 }
 document.querySelectorAll("[data-days]").forEach(b=>b.addEventListener("click",()=>{period=Number(b.dataset.days);document.querySelectorAll("[data-days]").forEach(x=>{const selected=x===b;x.classList.toggle("selected",selected);x.setAttribute("aria-pressed",String(selected));});trend();}));
-fetch("data/ocupacion.csv?t="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("No se pudieron cargar los datos");return r.text();}).then(t=>{data=parse(t);metrics();trend();heat();}).catch(e=>{status("Datos no disponibles","warning");$("lastUpdate").textContent=e.message;$("chartEmpty").hidden=false;$("chartEmpty").textContent=e.message;$("trendChart").hidden=true;heat();});
+// Refresca el CSV sin recargar la página y actualiza la edad de los datos cada minuto.
+let lastCsv = null;
+async function refresh() {
+ try {
+  const response = await fetch("data/ocupacion.csv?t="+Date.now(), {cache:"no-store"});
+  if (!response.ok) throw Error("No se pudieron cargar los datos");
+  const csv = await response.text();
+  if (csv !== lastCsv) {
+   const next = parse(csv);
+   data = next;
+   lastCsv = csv;
+   metrics();
+   trend();
+   heat();
+  } else {
+   metrics();
+  }
+ } catch (error) {
+  if (lastCsv === null) {
+   $("lastUpdate").textContent = error.message;
+   $("chartEmpty").hidden = false;
+   $("chartEmpty").textContent = error.message;
+   $("trendChart").hidden = true;
+   heat();
+  }
+  status("Error al consultar datos", "warning");
+  $("ageHint").textContent = "No se ha podido verificar una nueva actualización.";
+ }
+}
+refresh();
+setInterval(refresh, 60000);
 })();
