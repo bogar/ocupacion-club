@@ -84,37 +84,52 @@ function parseLatest(value){
     time.getTime()>Date.now()+300000)throw Error('Fecha no válida en latest.json');
  return {time,people:value.people};
 }
+// Cambios absolutos comparados con una lectura cercana a cada intervalo.
+// Los márgenes permiten el ligero desfase de las consultas de 5 minutos,
+// pero nunca se utiliza una lectura de un intervalo sustancialmente distinto.
+const trendWindows=[
+ {minutes:15,tolerance:5},
+ {minutes:30,tolerance:6},
+ {minutes:60,tolerance:7}
+];
+function trendForWindow(latest,rows,minutes,tolerance){
+ if(!latest)return null;
+ const target=latest.time.getTime()-minutes*60000;
+ let best=null,bestDistance=Infinity;
+ for(const row of rows){
+  const time=row.time.getTime();
+  if(time>=latest.time.getTime())continue;
+  const distance=Math.abs(time-target);
+  if(distance<=tolerance*60000 && distance<bestDistance){
+   best=row;bestDistance=distance;
+  }
+ }
+ if(!best)return null;
+ const difference=latest.people-best.people;
+ return {
+  difference,
+  elapsed:Math.round((latest.time-best.time)/60000),
+  direction:difference>0?'up':difference<0?'down':'flat'
+ };
+}
 function updateOccupancyTrend(latest){
- const wrapper=$('occupancyTrend'),pill=$('trendValue'),caption=$('trendContext');
- if(!latest){
-  wrapper.dataset.direction='pending';
-  pill.textContent='↗ Tendencia pendiente';
-  caption.textContent='Esperando lecturas para comparar';
-  return;
+ for(const {minutes,tolerance} of trendWindows){
+  const panel=$('trend'+minutes);
+  const pill=$('trendValue'+minutes);
+  const caption=$('trendContext'+minutes);
+  const comparison=trendForWindow(latest,data,minutes,tolerance);
+  if(!comparison){
+   panel.dataset.direction='pending';
+   pill.textContent='Sin datos';
+   caption.textContent='Sin referencia comparable';
+   continue;
+  }
+  panel.dataset.direction=comparison.direction;
+  pill.textContent=comparison.difference>0?'↑ +'+number(comparison.difference)+' personas':
+   comparison.difference<0?'↓ '+number(Math.abs(comparison.difference))+' personas':
+   '→ Sin cambios';
+  caption.textContent='hace '+comparison.elapsed+' min';
  }
- const target=latest.time.getTime()-15*60000;
- // Solo comparar con una lectura de hace aproximadamente 15 minutos.
- // Las interrupciones grandes no deben parecer un cambio en 15 minutos.
- const candidates=data.filter(row=>{
-  const t=row.time.getTime();
-  return t<latest.time.getTime() && Math.abs(t-target)<=5*60000;
- });
- if(!candidates.length){
-  wrapper.dataset.direction='pending';
-  pill.textContent='↗ Tendencia pendiente';
-  caption.textContent='Sin lectura comparable hace unos 15 min';
-  return;
- }
- const reference=candidates.reduce((best,row)=>
-  Math.abs(row.time.getTime()-target)<Math.abs(best.time.getTime()-target)?row:best);
- const difference=latest.people-reference.people;
- const elapsed=Math.round((latest.time.getTime()-reference.time.getTime())/60000);
- const direction=difference>0?'up':difference<0?'down':'flat';
- wrapper.dataset.direction=direction;
- pill.textContent=difference>0?'↑ +'+number(difference)+' personas':
-                  difference<0?'↓ '+number(Math.abs(difference))+' personas':
-                  '→ Sin cambios';
- caption.textContent='respecto a hace '+elapsed+' min';
 }
 function liveMetrics(){
  $('totalReadings').textContent=number(data.length);
