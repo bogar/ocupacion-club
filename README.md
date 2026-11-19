@@ -4,7 +4,7 @@ Panel web público, sin identificación del centro ni detalles de su proveedor.
 
 ## Qué muestra
 
-- **Situación actual:** última lectura, antigüedad, **tendencia respecto a hace unos 15 minutos**, media semanal, máximo y mínimo de hoy.
+- **Situación actual:** última lectura, antigüedad, **tendencias independientes a 15, 30 y 60 minutos**, media semanal, máximo y mínimo de hoy.
 - **Histórico navegable:** hoy, 7 días, 30 días y cualquier mes disponible en `data/archivo/index.json`.
 - **Resumen del periodo elegido:** media, máximo, mínimo y número de días con observaciones.
 - **Evolución legible a gran escala:** lecturas originales para hoy, agrupación horaria para 7 días y agrupación diaria para 30 días o un mes completo. Cada grupo muestra tanto la media como el máximo observado.
@@ -67,9 +67,11 @@ El panel no descarga todos los años a la vez: carga primero el CSV reciente (ha
 
 **Revisión de interfaz:** 19/11/2026. Para cualquier ajuste del sistema de captura, consultar el repositorio privado independiente.
 
-## Tendencia de ocupación
+## Tendencias de ocupación
 
-La tarjeta principal compara la última lectura con el registro más cercano a 15 minutos antes (se admite una diferencia de hasta 5 minutos). Si hay referencias comparables, aparece una flecha con el cambio **absoluto de personas** y los minutos reales transcurridos. Las subidas se muestran en ámbar, las bajadas en verde y los valores sin cambio en azul. Si faltan lecturas para esa ventana, indica que la tendencia está pendiente en lugar de deducir una cifra inexacta. No se trata de una predicción.
+La tarjeta principal muestra tres indicadores compactos de **15 minutos, 30 minutos y 1 hora**. Cada comparación toma la lectura válida más cercana a ese intervalo respecto de la lectura más reciente. Los márgenes máximos permitidos son ±5, ±6 y ±7 minutos, respectivamente. La tarjeta indica el número absoluto de personas que han entrado o salido respecto de la referencia y el intervalo **real** transcurrido. Las subidas aparecen en ámbar, las bajadas en verde y la estabilidad en azul.
+
+Si falta una lectura comparable, ese indicador muestra **Sin datos** sin afectar a los demás. Las referencias se calculan en el navegador a partir de los CSV públicos ya disponibles, por lo que no es necesario modificar Proxmox ni aumentar las consultas o publicaciones. Las tres comparaciones son tendencias observadas, no predicciones.
 
 ## Nuevos paneles inteligentes
 
