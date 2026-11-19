@@ -45,7 +45,7 @@
       <section class="panel section-panel" aria-labelledby="trendTitle">
         <div class="section-header">
           <div><div class="eyebrow muted">Histórico</div><h2 id="trendTitle">Evolución de la ocupación</h2><p class="section-subtitle">Cada punto representa una lectura registrada.</p></div>
-          <div class="segmented" role="group" aria-label="Periodo"><button class="selected" type="button" data-days="1" aria-pressed="true">Hoy</button><button type="button" data-days="7" aria-pressed="false">7 días</button><button type="button" data-days="30" aria-pressed="false">30 días</button></div>
+          <div class="period-controls"><div class="segmented" role="group" aria-label="Periodo"><button class="selected" type="button" data-days="1" aria-pressed="true">Hoy</button><button type="button" data-days="7" aria-pressed="false">7 días</button><button type="button" data-days="30" aria-pressed="false">30 días</button></div><label class="month-picker" for="monthSelect"><span>Histórico mensual</span><select id="monthSelect" aria-label="Consultar histórico de un mes"><option value="">Elegir mes</option></select></label></div>
         </div>
         <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Gráfico de evolución de la ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
         <div class="footline"><span id="chartCaption">Horario local de España peninsular</span><span id="chartCount"></span></div>
