@@ -102,3 +102,14 @@ La vista completa sigue incluyendo el historial, el mapa de calor, la comparativ
 La URL `https://bogar.github.io/ocupacion-club/assets/ha.html` muestra solamente la ocupación actual y la antigüedad de la última lectura, adecuada para una tarjeta tipo iframe. Consulta **`data/latest.json` directamente a través de `raw.githubusercontent.com`**, no el CSV de 60 días, que solo se actualiza diariamente.
 
 La tarjeta se refresca cada minuto y también cuando vuelve a estar visible. Si una lectura tiene más de 20 minutos, muestra un guion y el aviso **Datos desactualizados**, en lugar de presentar la cifra como actual. Si falla la conexión, informa **Sin datos recientes**. No se necesitan cambios en el contenedor Proxmox para esta tarjeta.
+
+
+## Cierre nocturno provisional (pendiente de confirmar)
+
+Entre las **23:00 y las 05:30, horario de Europe/Madrid**, el backend publica cada quince minutos un **0 estimado** sin consultar el proveedor. El resto del día vuelve a consultar cada cinco minutos, desde las **05:35**.
+
+- `data/latest.json` conserva únicamente `people` y `timestamp`.
+- `data/reading-status.json` indica si la lectura es `"measured"` o `"estimated_closed"`, con el mismo timestamp.
+- El cero nocturno **no se guarda como medición real** en los CSV ni influye en medias, tendencias, gráficos históricos ni predicciones.
+- La web y `assets/ha.html` muestran expresamente **«Cierre nocturno · 0 estimado»**. Fuera de ese horario, si no vuelve a haber una lectura real, indican que se está esperando una lectura, sin prolongar el cierre supuesto.
+- Esta suposición se ha establecido provisionalmente el 19/11/2026 tras observar que la fuente dejó de mostrar la ocupación de noche. No equivale a la confirmación del horario oficial.
