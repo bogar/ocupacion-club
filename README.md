@@ -4,10 +4,13 @@ Panel web público, sin identificación del centro ni detalles de su proveedor.
 
 ## Qué muestra
 
-- Última lectura de ocupación y su antigüedad.
-- Evolución de hoy, últimos 7 días, últimos 30 días y consulta por mes de cualquier histórico archivado.
-- Mapa de calor por día de la semana y hora.
-- Resumen de franjas habituales cuando haya suficiente histórico.
+- **Situación actual:** última lectura, antigüedad, media semanal, máximo y mínimo de hoy.
+- **Histórico navegable:** hoy, 7 días, 30 días y cualquier mes disponible en `data/archivo/index.json`.
+- **Resumen del periodo elegido:** media, máximo, mínimo y número de días con observaciones.
+- **Evolución legible a gran escala:** lecturas originales para hoy, agrupación horaria para 7 días y agrupación diaria para 30 días o un mes completo. Cada grupo muestra tanto la media como el máximo observado.
+- **Perfil horario:** comparación de días laborables y fines de semana, sin incluir una categoría hasta tener al menos tres jornadas. Las medias se calculan por día primero, evitando dar más peso a las horas con más lecturas.
+- **Mapa de calor semanal** y recomendaciones de horarios tranquilos basadas en al menos tres jornadas de datos por franja. Estas estadísticas usan los últimos 30 días, o el mes seleccionado.
+- **Estado de actualización:** aviso si la última lectura supera 20 minutos o si falla la consulta de datos.
 
 El panel utiliza únicamente `data/ocupacion.csv`, con el formato:
 
@@ -39,3 +42,12 @@ Se prevé una lectura cada 5 minutos desde un proceso externo. La web comprueba 
 ## Conservación del histórico
 
 No se elimina ningún mes archivado automáticamente. Cada mes terminado se publica en un archivo CSV separado, con marcas temporales UTC y sin nombres de centros ni credenciales. El mes en curso está disponible en el CSV reciente y, una vez terminado, se crea su archivo permanente. El archivo de 60 días puede descartar lecturas antiguas porque estas ya se conservan en el archivo mensual correspondiente.
+
+
+## Interpretación y rendimiento
+
+Se trata de personas observadas en las consultas disponibles, **no** de porcentajes de aforo ni de estimaciones oficiales de capacidad. Las medias y máximos de los gráficos resumidos se refieren solamente a muestras reales del intervalo. Las franjas sin registros aparecen vacías. El mapa de calor utiliza una escala relativa al periodo, que puede cambiar de un mes a otro.
+
+El panel no descarga todos los años a la vez: carga primero el CSV reciente (hasta 60 días) y después el archivo mensual seleccionado, si es necesario. Los gráficos agrupan cientos o miles de muestras en un número manejable de puntos, pero el CSV original del mes conserva cada lectura. La web refresca la ocupación reciente cada minuto y el índice de meses cada cinco minutos. No requiere base de datos, cookies, analítica ni almacenar datos en el navegador.
+
+**Revisión de interfaz:** 19/11/2026. Para cualquier ajuste del sistema de captura, consultar el repositorio privado independiente.
