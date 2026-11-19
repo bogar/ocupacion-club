@@ -132,14 +132,14 @@ function withinClosure(date=new Date()){
  return minute>=23*60||minute<=5*60+30;
 }
 function parseReadingStatus(value){
- if(!value||typeof value!=='object'||!['measured','estimated_closed','unverified'].includes(value.mode))
+ if(!value||typeof value!=='object'||!['measured','estimated_closed','estimated_missing','unverified'].includes(value.mode))
   throw Error('Tipo de lectura inválido');
  if(value.timestamp!==null&&(typeof value.timestamp!=='string'||!Number.isFinite(Date.parse(value.timestamp))))
   throw Error('Fecha del tipo de lectura inválida');
  return value;
 }
 function estimatedReading(latest){
- return !!latest&&readingStatus?.mode==='estimated_closed'&&
+ return !!latest&&['estimated_closed','estimated_missing'].includes(readingStatus?.mode)&&
   readingStatus.timestamp===latest.time.toISOString();
 }
 // Cambios absolutos comparados con una lectura cercana a cada intervalo.
@@ -199,13 +199,17 @@ function liveMetrics(){
  updateOccupancyTrend(estimated?null:latest);
  if(estimated){
   const now=new Date(),minutes=Math.max(0,Math.floor((now-latest.time)/60000));
-  const valid=withinClosure(now)&&minutes<20;
+  const unavailable=readingStatus.mode==='estimated_missing';
+  const valid=minutes<20&&(unavailable||withinClosure(now));
   $('currentCount').textContent=valid?'0':'—';
   $('lastUpdate').textContent='Última estimación: '+timeFormat.format(latest.time);
-  $('ageHint').textContent=valid?'Cierre nocturno: 0 personas asumidas, no medidas.':
-   'Fin del cierre estimado. Esperando una lectura real.';
-  $('footerStamp').textContent='Estimación de cierre: '+timeFormat.format(latest.time);
-  status(valid?'Cierre nocturno · estimado':'Esperando nueva lectura real','warning');
+  $('ageHint').textContent=valid?(unavailable?
+   'La ficha no publica ocupación: 0 asumido, no medido.':
+   'Cierre nocturno: 0 personas asumidas, no medidas.'):
+   'Estimación desactualizada. Esperando una nueva consulta.';
+  $('footerStamp').textContent='Ocupación estimada: '+timeFormat.format(latest.time);
+  status(valid?(unavailable?'Sin dato publicado · 0 estimado':'Cierre nocturno · estimado'):
+   'Esperando nuevos datos','warning');
   // El resto de estadísticas sigue utilizando exclusivamente lecturas reales.
   return;
  }
