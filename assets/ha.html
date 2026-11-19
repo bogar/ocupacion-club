@@ -7,48 +7,90 @@
   <meta name="color-scheme" content="light dark">
   <title>Ocupación club</title>
   <style>
-    html, body { width: 100%; height: 100%; margin: 0; }
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      color: #243047;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-variant-numeric: tabular-nums;
+    html,body{width:100%;min-height:100%;margin:0}
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:transparent;color:#243047;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-variant-numeric:tabular-nums;text-align:center}
+    #count{font-size:clamp(36px,14vw,72px);font-weight:700;line-height:1.1}
+    #status{margin-top:8px;font-size:12px;font-weight:500;color:#64748b;line-height:1.3}
+    body[data-state="stale"] #status,body[data-state="error"] #status{color:#b46c33}
+    @media(prefers-color-scheme:dark){
+      body{color:#e8edf7}
+      #status{color:#a7b8ce}
+      body[data-state="stale"] #status,body[data-state="error"] #status{color:#f0af77}
     }
-    #count { font-size: clamp(36px, 14vw, 72px); font-weight: 700; line-height: 1; }
-    @media (prefers-color-scheme: dark) { body { color: #e8edf7; } }
   </style>
 </head>
-<body>
+<body data-state="loading">
   <output id="count" aria-label="Personas en el club" aria-live="polite">…</output>
+  <div id="status" role="status" aria-live="polite">Consultando ocupación</div>
   <script>
-    const count = document.getElementById('count');
-    async function update() {
-      try {
-        const response = await fetch('../data/ocupacion.csv?t=' + Date.now(), { cache: 'no-store' });
-        if (!response.ok) throw new Error('No se pudo cargar el histórico');
-        const rows = (await response.text()).trim().split(/\r?\n/);
-        if (rows.length < 2) throw new Error('Sin lecturas');
-        const values = rows[rows.length - 1].split(',');
-        if (values.length !== 2) throw new Error('Formato incorrecto');
-        const timestamp = Date.parse(values[0]);
-        const people = Number(values[1]);
-        const age = Date.now() - timestamp;
-        if (!Number.isFinite(timestamp) || !Number.isInteger(people) || people < 0 ||
-            age > 20 * 60 * 1000 || age < -2 * 60 * 1000) {
-          throw new Error('Lectura inválida o desactualizada');
+    (() => {
+      'use strict';
+      // Los datos de Pages pueden quedarse antiguos porque no se vuelve
+      // a desplegar con cada lectura. Consultamos el JSON directamente en GitHub.
+      const URL = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/data/latest.json';
+      const count = document.getElementById('count');
+      const status = document.getElementById('status');
+      const MAX_AGE_MS = 20 * 60 * 1000;
+      let lastValid = null;
+      let inFlight = false;
+
+      function display() {
+        if (!lastValid) return;
+        const age = Date.now() - lastValid.timestamp;
+        if (age > MAX_AGE_MS || age < -5 * 60 * 1000) {
+          document.body.dataset.state = 'stale';
+          count.textContent = '—';
+          count.title = 'Última lectura: ' + new Date(lastValid.timestamp).toLocaleString('es-ES');
+          status.textContent = 'Datos desactualizados';
+          return;
         }
-        count.textContent = String(people);
-        count.title = 'Última lectura: ' + new Date(timestamp).toLocaleString('es-ES');
-      } catch {
-        count.textContent = '—';
-        count.title = 'Sin lectura reciente';
+        document.body.dataset.state = 'ok';
+        count.textContent = String(lastValid.people);
+        count.title = 'Última lectura: ' + new Date(lastValid.timestamp).toLocaleString('es-ES');
+        status.textContent = age < 60000 ? 'Actualizado hace menos de 1 min' :
+          'Actualizado hace ' + Math.floor(age / 60000) + ' min';
       }
-    }
-    update();
-    setInterval(update, 60 * 1000);
+
+      async function update() {
+        if (inFlight) return;
+        inFlight = true;
+        try {
+          const response = await fetch(URL + '?t=' + Date.now(), { cache: 'no-store' });
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          const result = await response.json();
+          if (!result || typeof result !== 'object' || Array.isArray(result) ||
+              Object.keys(result).length !== 2 ||
+              !Number.isSafeInteger(result.people) || result.people < 0 ||
+              typeof result.timestamp !== 'string') throw new Error('JSON incorrecto');
+          const timestamp = Date.parse(result.timestamp);
+          if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== result.timestamp)
+            throw new Error('Fecha inválida');
+          if (!lastValid || timestamp >= lastValid.timestamp) {
+            lastValid = { people: result.people, timestamp };
+          }
+          display();
+        } catch (error) {
+          display();
+          if (!lastValid || Date.now() - lastValid.timestamp > MAX_AGE_MS) {
+            document.body.dataset.state = 'error';
+            count.textContent = '—';
+            status.textContent = 'Sin datos recientes';
+          } else {
+            status.textContent += ' · Sin conexión';
+          }
+        } finally {
+          inFlight = false;
+        }
+      }
+
+      update();
+      setInterval(() => { display(); update(); }, 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) update();
+      });
+    })();
   </script>
 </body>
 </html>
