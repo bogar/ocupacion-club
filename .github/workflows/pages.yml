@@ -5,10 +5,8 @@ on:
     paths:
       - index.html
       - assets/**
-      # El publicador escribe primero el CSV y después latest.json.
-      # Así desplegamos una sola vez por lectura, cuando ambos archivos están actualizados.
-      - data/latest.json
-      - data/archivo/**
+      # Los CSV/JSON se leen directamente de la rama main en el navegador.
+      # No se reconstruye Pages por cada lectura de Proxmox.
       - .github/workflows/pages.yml
   workflow_dispatch:
 
