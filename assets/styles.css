@@ -38,6 +38,12 @@ h1{font-size:23px;line-height:1.2;letter-spacing:-.85px;font-weight:800;margin:0
 .main-count strong{font-size:82px;line-height:1;letter-spacing:-4px;font-variant-numeric:tabular-nums;font-weight:780}
 .main-count span{color:#73839a;font-size:17px}
 .updated{font-size:13px;color:#71839b;margin:5px 0 0}
+.occupancy-trend{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:12px 0 16px;min-height:25px}
+.trend-pill{display:inline-flex;align-items:center;gap:5px;border-radius:24px;padding:6px 10px;font-size:12px;font-weight:800;letter-spacing:.005em;font-variant-numeric:tabular-nums;border:1px solid #e1e8f1;background:#f4f7fb;color:#6d7e94}
+.trend-caption{font-size:11px;color:#8b9aaf;line-height:1.4}
+.occupancy-trend[data-direction="down"] .trend-pill{color:#087d5c;background:#ebf8f2;border-color:#cceede}
+.occupancy-trend[data-direction="up"] .trend-pill{color:#ae5a24;background:#fff3e9;border-color:#f5dec9}
+.occupancy-trend[data-direction="flat"] .trend-pill{color:#41658e;background:#eaf2fd;border-color:#d4e4f9}
 .current-footer{border-top:1px solid #edf1f8;padding-top:13px;margin-top:auto;color:#8391a5;font-size:12px;display:flex;gap:10px;align-items:center}
 .insight-card{background:linear-gradient(125deg,#172e50 2%,#254e7f 84%);color:white;position:relative;isolation:isolate;overflow:hidden;border-color:transparent}
 .insight-card .panel-overline{color:#b2d1ef}
