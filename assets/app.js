@@ -36,14 +36,19 @@ const hourFormat = new Intl.DateTimeFormat('es-ES',{timeZone:zone,day:'2-digit',
 const localParts = new Intl.DateTimeFormat('en-GB',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',hourCycle:'h23'});
 const monthLabelFormat = new Intl.DateTimeFormat('es-ES',{timeZone:'UTC',month:'long',year:'numeric'});
 
+const infoCache=new WeakMap();
 function info(date){
+ const cached=infoCache.get(date);
+ if(cached)return cached;
  const parts=Object.fromEntries(localParts.formatToParts(date).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
- return {
+ const value={
   day:parts.year+'-'+parts.month+'-'+parts.day,
   month:parts.year+'-'+parts.month,
   hour:Number(parts.hour),
   weekday:([6,0,1,2,3,4,5][['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(parts.weekday)])
  };
+ infoCache.set(date,value);
+ return value;
 }
 function monthLabel(value){
  const label=monthLabelFormat.format(new Date(value+'-15T12:00:00Z'));
@@ -67,6 +72,28 @@ let data=[], latestSnapshot=null, selectedMonth=null, period=1;
 let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
 let historyLoaded=false,historyInFlight=null,liveInFlight=null;
 let quickMode=false,initializing=true;
+let chartsPromise=null;
+function ensureCharts(){
+ if(quickMode||typeof Chart!=='undefined')return Promise.resolve();
+ if(chartsPromise)return chartsPromise;
+ chartsPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+  script.async=true;
+  script.onload=()=>{
+   if(!quickMode)renderAnalytics();
+   window.dispatchEvent(new Event('ocupacion:charts-ready'));
+   resolve();
+  };
+  script.onerror=()=>reject(Error('No se pudo cargar Chart.js'));
+  document.head.appendChild(script);
+ }).catch(error=>{
+  chartsPromise=null;
+  console.warn(error.message);
+ });
+ return chartsPromise;
+}
+
 let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
 
 function status(text,state){$('statusText').textContent=text;$('status').dataset.state=state;}
@@ -514,6 +541,7 @@ function setQuickMode(enabled){
  window.OCUPACION_VIEW_QUICK=quickMode;
  window.dispatchEvent(new Event('ocupacion:view'));
  if(!quickMode&&!initializing){
+  ensureCharts();
   if(!historyLoaded)ensureHistory();
   else renderAnalytics();
   loadArchiveIndex();
@@ -571,8 +599,11 @@ async function refresh(){
    liveMetrics();
    notifyInsights();
   }
-  if(!quickMode&&!historyLoaded&&!historyInFlight)
-   setTimeout(()=>ensureHistory(),150);
+  if(!quickMode){
+   ensureCharts();
+   if(!historyLoaded&&!historyInFlight)
+    setTimeout(()=>ensureHistory(),150);
+  }
  })().finally(()=>{liveInFlight=null;});
  return liveInFlight;
 }
