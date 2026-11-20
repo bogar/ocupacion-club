@@ -113,3 +113,11 @@ Si se obtiene el dato, se publica como medición real. Si la ficha está disponi
 Los fallos técnicos de acceso o navegación no se convierten en cero. Tanto el panel principal como `assets/ha.html` distinguen explícitamente una **ocupación no publicada** de una medición real.
 
 `data/latest.json` conserva únicamente `people` y `timestamp`, sin nombre ni identificador del centro.
+
+## Desglose apilado estimado en el histórico
+
+El gráfico «Evolución de la ocupación» ofrece un botón para mostrar **desglose apilado** de actividades dirigidas, tenis, esquaix y frontón, cuando existan datos **agregados y validados** en `data/desglose.json`. La línea total sigue mostrando la ocupación **real** del club. Las categorías son **estimaciones de personas equivalentes**, nunca mediciones directas de asistentes por zona.
+
+Por defecto, `data/desglose.json` está vacío y la gráfica muestra únicamente las lecturas reales. Ninguna estimación se inventa, no se publican profesores, horarios de clases individuales ni IDs. El residual `sin atribuir` es una diferencia matemática, no «personas en fitness». Las modalidades Tennis Individual y Tennis Dobles usan las **mismas pistas**, que no deben duplicarse.
+
+Detalles del modelo, esquema y controles: [Documentación del desglose](docs/desglose.md). El exportador experimental se encuentra en el repositorio privado y **nunca publica automáticamente**.
