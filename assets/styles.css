@@ -231,3 +231,15 @@ body.quick-mode .method-note{display:none}
 .room-subtitle{font-size:11px;color:#8295aa}
 .room-empty{padding:12px 4px;grid-column:1/-1}
 @media(max-width:520px){.room-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.room-card{padding:14px}.room-people{font-size:32px}}
+
+
+/* Desglose estimado: misma gráfica de evolución, sin confundir estimaciones con medición */
+.breakdown-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 11px}
+.breakdown-toggle{appearance:none;border:1px solid #ccdbea;background:#f7faff;border-radius:10px;
+ padding:8px 13px;color:#345b84;font:inherit;font-size:12px;font-weight:750;cursor:pointer;
+ transition:background .16s ease,border-color .16s ease}
+.breakdown-toggle:hover{background:#eef5ff;border-color:#9abbe2}
+.breakdown-toggle[aria-pressed="true"]{background:#e8f2ff;color:#1a5593;border-color:#94b9e2}
+.breakdown-toggle:focus-visible{outline:3px solid #9abfe7;outline-offset:2px}
+.breakdown-description{flex:1;min-width:230px;color:#7387a1;font-size:11px;line-height:1.5}
+@media(max-width:600px){.breakdown-toolbar{gap:8px}.breakdown-description{min-width:0;flex-basis:100%}}
