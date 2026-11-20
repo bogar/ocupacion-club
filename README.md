@@ -121,3 +121,11 @@ El gráfico «Evolución de la ocupación» ofrece un botón para mostrar **desg
 Por defecto, `data/desglose.json` está vacío y la gráfica muestra únicamente las lecturas reales. Ninguna estimación se inventa, no se publican profesores, horarios de clases individuales ni IDs. El residual `sin atribuir` es una diferencia matemática, no «personas en fitness». Las modalidades Tennis Individual y Tennis Dobles usan las **mismas pistas**, que no deben duplicarse.
 
 Detalles del modelo, esquema y controles: [Documentación del desglose](docs/desglose.md). El exportador experimental se encuentra en el repositorio privado y **nunca publica automáticamente**.
+
+## Elegir un día concreto
+
+El gráfico **Evolución de la ocupación** incluye un selector **Día** (calendario) además de Hoy, 7 días, 30 días y Mes. Al seleccionar una fecha, muestra **cada lectura real de ese día**, con las horas de Madrid y el resumen de media, máximo y mínimo correspondiente. El botón **Limpiar** vuelve a Hoy.
+
+Si la fecha no figura en el CSV reciente, el panel carga bajo demanda el CSV archivado del mes seleccionado. No descarga todos los meses ni permite elegir una fecha futura. Un día sin lecturas presenta un mensaje claro en lugar de una curva inventada.
+
+El filtro de día se aplica al gráfico histórico y a su resumen de período. Los análisis de patrones generales siguen usando su propia ventana de datos. El filtro también funciona en modo desglose apilado si hay estimaciones para ese día. Pruebas: `node --test test/day-filter.test.js`.
