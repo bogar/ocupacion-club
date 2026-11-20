@@ -106,7 +106,9 @@ let monthLoading=false,monthError=null,dayLoading=false,dayError=null,dayRequest
 
 let breakdownEnabled=false,breakdownPoints=[],breakdownLoaded=false,breakdownLoading=false;
 async function loadBreakdown(){
- if(breakdownLoaded||breakdownLoading)return;
+ // Reconsultar al volver a activar el modo apilado: una fuente que estaba
+ // vacía puede haberse publicado mientras la página seguía abierta.
+ if(breakdownLoading)return;
  breakdownLoading=true;
  const note=$('breakdownInfo');
  if(note)note.textContent='Comprobando desglose anónimo…';
@@ -132,8 +134,13 @@ if(breakdownButton)breakdownButton.addEventListener('click',()=>{
  breakdownEnabled=!breakdownEnabled;
  breakdownButton.setAttribute('aria-pressed',String(breakdownEnabled));
  breakdownButton.textContent=breakdownEnabled?'Ver solo ocupación real':'Ver desglose apilado';
- if(breakdownEnabled)loadBreakdown();
- else {
+ if(breakdownEnabled){
+  // La primera pulsación renderiza inmediatamente la serie real.
+  // Pulsaciones posteriores también permiten usar el caché mientras
+  // se comprueba si hay una versión más reciente.
+  if(!quickMode)renderAnalytics();
+  loadBreakdown();
+ }else {
   $('breakdownInfo').textContent='Solo ocupación real, sin estimaciones.';
   renderAnalytics();
  }
