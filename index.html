@@ -101,12 +101,16 @@
 
     <section class="panel section-panel" id="history" aria-labelledby="trendTitle">
       <div class="section-header main-section-header">
-        <div><div class="eyebrow muted">Análisis histórico</div><h2 id="trendTitle">Evolución de la ocupación</h2><p class="section-subtitle">Explora el día de hoy, las últimas semanas o cualquier mes archivado.</p></div>
+        <div><div class="eyebrow muted">Análisis histórico</div><h2 id="trendTitle">Evolución de la ocupación</h2><p class="section-subtitle">Consulta hoy, elige un día concreto o explora las últimas semanas y los meses archivados.</p></div>
         <div class="period-controls">
           <div class="segmented" role="group" aria-label="Periodo">
             <button type="button" data-days="1" class="selected" aria-pressed="true">Hoy</button>
             <button type="button" data-days="7" aria-pressed="false">7 días</button>
             <button type="button" data-days="30" aria-pressed="false">30 días</button>
+          </div>
+          <div class="date-control">
+            <label class="date-picker" for="daySelect"><span>Día</span><input id="daySelect" type="date" lang="es-ES" aria-label="Consultar un día concreto"></label>
+            <button type="button" class="date-clear" id="clearDay" hidden aria-label="Quitar filtro de día">Limpiar</button>
           </div>
           <label class="month-picker" for="monthSelect"><span>Mes</span><select id="monthSelect" aria-label="Seleccionar mes histórico"><option value="">Elegir mes</option></select></label>
         </div>
