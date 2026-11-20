@@ -104,6 +104,42 @@ function ensureCharts(){
 
 let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
 
+let breakdownEnabled=false,breakdownPoints=[],breakdownLoaded=false,breakdownLoading=false;
+async function loadBreakdown(){
+ if(breakdownLoaded||breakdownLoading)return;
+ breakdownLoading=true;
+ const note=$('breakdownInfo');
+ if(note)note.textContent='Comprobando desglose anónimo…';
+ try{
+  const json=await dataFetch('data/desglose.json','json');
+  const points=window.OcupacionDesglose?.parse(json);
+  if(!points)throw Error('Desglose no validado.');
+  breakdownPoints=points;
+  breakdownLoaded=true;
+  if(note)note.textContent=points.length?
+   'Reservas y uso deportivo estimados; total de personas medido.':
+   'Aún no hay estimaciones por categoría publicadas y validadas.';
+ }catch{
+  breakdownPoints=[];
+  if(note)note.textContent='Desglose pendiente de validación. Solo mostramos personas medidas.';
+ }finally{
+  breakdownLoading=false;
+  if(!quickMode)renderAnalytics();
+ }
+}
+const breakdownButton=$('breakdownToggle');
+if(breakdownButton)breakdownButton.addEventListener('click',()=>{
+ breakdownEnabled=!breakdownEnabled;
+ breakdownButton.setAttribute('aria-pressed',String(breakdownEnabled));
+ breakdownButton.textContent=breakdownEnabled?'Ver solo ocupación real':'Ver desglose apilado';
+ if(breakdownEnabled)loadBreakdown();
+ else {
+  $('breakdownInfo').textContent='Solo ocupación real, sin estimaciones.';
+  renderAnalytics();
+ }
+});
+
+
 function status(text,state){$('statusText').textContent=text;$('status').dataset.state=state;}
 // La cifra actual se obtiene del JSON mínimo cuando existe, o del CSV
 // reciente como respaldo. Nunca sustituimos un dato nuevo por otro antiguo.
@@ -319,7 +355,8 @@ function trend(){
   ? 'Media y máximo observados de cada hora · Horario peninsular'
   : 'Media y máximo observados de cada día · Horario peninsular';
  $('chartCount').textContent=number(rows.length)+' lecturas · '+number(summary.length)+(granularity==='hour'?' horas':granularity==='day'?' días':' puntos');
- const series=[{
+ let stacked=false;
+ let series=[{
   label:aggregate?'Media':'Personas',
   data:summary.map(row=>({x:row.x,y:row.mean,label:row.label,count:row.count})),
   parsing:false,borderColor:'#316ab9',backgroundColor:'rgba(49,106,185,.09)',
@@ -331,6 +368,42 @@ function trend(){
   parsing:false,borderColor:'#d99051',backgroundColor:'transparent',
   borderDash:[4,4],borderWidth:1.5,pointRadius:0,pointHoverRadius:4,fill:false,tension:.12
  });
+ if(breakdownEnabled&&window.OcupacionDesglose&&breakdownPoints.length){
+  const layered=window.OcupacionDesglose.build(summary,rows,granularity,breakdownPoints,info);
+  if(layered.available){
+   stacked=true;
+   const categories=[
+    ['directed','Actividades dirigidas','#317ac2','rgba(49,122,194,.28)'],
+    ['tennis','Tenis','#c88b39','rgba(200,139,57,.29)'],
+    ['squash','Esquaix','#8f63ba','rgba(143,99,186,.26)'],
+    ['fronton','Frontón','#299786','rgba(41,151,134,.27)'],
+    ['unattributed','Sin atribuir (residual estimado)','#a4b0c2','rgba(164,176,194,.25)']
+   ];
+   series=[];
+   for(const [key,label,border,background] of categories){
+    const points=layered.series[key];
+    if(!points.some(p=>p.y!==null))continue;
+    series.push({
+     label,data:points,parsing:false,stack:'componentes',
+     borderColor:border,backgroundColor:background,borderWidth:1.8,
+     pointRadius:0,pointHoverRadius:3,
+     fill:series.length?'-1':'origin',tension:.07,spanGaps:false
+    });
+   }
+   series.push({
+    label:'Total en el club (medido)',stack:'total',parsing:false,
+    data:summary.map(row=>({x:row.x,y:row.mean,label:row.label,count:row.count})),
+    borderColor:'#1d3557',backgroundColor:'transparent',
+    borderWidth:2.8,pointRadius:0,pointHoverRadius:5,fill:false,tension:.12,spanGaps:false
+   });
+   $('chartCaption').textContent='Total real (línea oscura) · Componentes estimados (áreas) · Sin atribuir es un residual teórico.';
+   $('breakdownInfo').textContent=number(layered.coverage)+' de '+number(layered.total)+
+    ' puntos con estimaciones comparables.';
+  }else $('breakdownInfo').textContent='No hay estimaciones coincidentes con este periodo. Se muestra el total real.';
+ }else if(breakdownEnabled){
+  $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
+    'Desglose sin estimaciones validadas. Se muestra el total real.';
+ }
  $('trendChart').hidden=false;$('chartEmpty').hidden=true;
  trendChart=new Chart($('trendChart'),{
   type:'line',data:{datasets:series},
@@ -338,10 +411,11 @@ function trend(){
    responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
    interaction:{mode:'index',intersect:false},
    plugins:{
-    legend:{display:aggregate,position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11}}},
+    legend:{display:aggregate||stacked,position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11}}},
     tooltip:{callbacks:{
      title:items=>items[0]?.raw?.label||'',
-     label:item=>item.dataset.label+': '+number(item.parsed.y)+' personas',
+     label:item=>item.dataset.label+': '+number(item.parsed.y)+
+       (stacked&&item.dataset.stack==='componentes'?' personas equivalentes estimadas':' personas medidas'),
      footer:items=>aggregate?(items[0].raw.count+' lecturas en el intervalo'):''
     }}
    },
@@ -350,7 +424,7 @@ function trend(){
      maxTicksLimit:7,color:'#8b98ab',font:{size:10},
      callback:value=>new Intl.DateTimeFormat('es-ES',{timeZone:zone,...(granularity==='raw'?{hour:'2-digit',minute:'2-digit'}:granularity==='hour'?{day:'2-digit',month:'2-digit',hour:'2-digit'}:{day:'2-digit',month:'2-digit'})}).format(new Date(value))
     }},
-    y:{beginAtZero:true,grid:{color:'#eaf0f7'},ticks:{precision:0,color:'#8b98ab',font:{size:10}}}
+    y:{beginAtZero:true,stacked,grid:{color:'#eaf0f7'},ticks:{precision:0,color:'#8b98ab',font:{size:10}}}
    }
   }
  });
