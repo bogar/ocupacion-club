@@ -68,7 +68,7 @@ function parse(csv){
  }).filter(Boolean).sort((a,b)=>a.time-b.time);
 }
 const archiveMonths=new Set(), archiveData=new Map();
-let data=[], latestSnapshot=null, readingStatus=null, selectedMonth=null, period=1;
+let data=[], latestSnapshot=null, readingStatus=null, selectedMonth=null, selectedDay=null, period=1;
 let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
 let historyLoaded=false,historyInFlight=null,liveInFlight=null;
 let quickMode=false,initializing=true;
@@ -102,7 +102,7 @@ function ensureCharts(){
  return chartsPromise;
 }
 
-let monthLoading=false,monthError=null,trendChart=null,profileChart=null;
+let monthLoading=false,monthError=null,dayLoading=false,dayError=null,dayRequest=0,trendChart=null,profileChart=null;
 
 let breakdownEnabled=false,breakdownPoints=[],breakdownLoaded=false,breakdownLoading=false;
 async function loadBreakdown(){
@@ -282,10 +282,16 @@ function liveMetrics(){
  }
 }
 function periodName(){
+ if(selectedDay)return window.OcupacionFecha.label(selectedDay);
  if(selectedMonth)return monthLabel(selectedMonth);
  return period===1?'Hoy':'Últimos '+period+' días';
 }
 function selectionRows(){
+ if(selectedDay){
+  if(dayLoading||dayError)return [];
+  const source=archiveData.get(selectedDay.slice(0,7))||data;
+  return source.filter(row=>info(row.time).day===selectedDay);
+ }
  if(selectedMonth){
   if(monthLoading||monthError)return [];
   const source=archiveData.get(selectedMonth)||data;
@@ -342,11 +348,13 @@ function trend(){
  const rows=selectionRows();
  renderPeriodMetrics(rows);
  $('chartCount').textContent=number(rows.length)+' lecturas';
+ if(dayLoading){emptyChart('trendChart','chartEmpty','Cargando lecturas del día seleccionado…');return;}
+ if(dayError){emptyChart('trendChart','chartEmpty',dayError);return;}
  if(monthLoading){emptyChart('trendChart','chartEmpty','Cargando histórico mensual…');return;}
  if(monthError){emptyChart('trendChart','chartEmpty',monthError);return;}
  if(!rows.length){emptyChart('trendChart','chartEmpty','Todavía no hay lecturas para este periodo.');return;}
  if(typeof Chart==='undefined'){emptyChart('trendChart','chartEmpty','Preparando gráfico…');return;}
- const granularity=selectedMonth||period===30?'day':period===7?'hour':'raw';
+ const granularity=selectedDay?'raw':selectedMonth||period===30?'day':period===7?'hour':'raw';
  const summary=summarize(rows,granularity);
  const aggregate=granularity!=='raw';
  $('chartCaption').textContent=granularity==='raw'
@@ -577,6 +585,13 @@ function renderAnalytics(){
  heat(grid);
  recommendations(grid);
 }
+function updateDayControls(){
+ const input=$('daySelect');
+ input.value=selectedDay||'';
+ input.max=window.OcupacionFecha.key(new Date());
+ input.dataset.selected=String(!!selectedDay);
+ $('clearDay').hidden=!selectedDay;
+}
 function updateMonthOptions(){
  const list=new Set([...archiveMonths,...data.map(row=>info(row.time).month)]);
  const months=[...list].sort().reverse();
@@ -584,6 +599,9 @@ function updateMonthOptions(){
  select.replaceChildren(new Option('Elegir mes',''));
  for(const month of months)select.add(new Option(monthLabel(month),month));
  select.value=selectedMonth||'';
+ const input=$('daySelect');
+ input.min=months.length?months.at(-1)+'-01':'';
+ updateDayControls();
 }
 async function loadArchiveIndex(){
  try{
@@ -598,12 +616,47 @@ async function loadArchiveIndex(){
 }
 function updatePeriodButtons(){
  for(const button of document.querySelectorAll('[data-days]')){
-  const active=!selectedMonth&&Number(button.dataset.days)===period;
+  const active=!selectedMonth&&!selectedDay&&Number(button.dataset.days)===period;
   button.classList.toggle('selected',active);
   button.setAttribute('aria-pressed',String(active));
  }
 }
+async function selectDay(day){
+ if(day&&!window.OcupacionFecha.valid(day)){
+  updateDayControls();
+  return;
+ }
+ const request=++dayRequest;
+ selectedDay=day||null;
+ selectedMonth=null;
+ monthLoading=false;monthError=null;dayError=null;
+ dayLoading=!!selectedDay;
+ updatePeriodButtons();updateMonthOptions();renderAnalytics();
+ if(!selectedDay)return;
+ const chosen=selectedDay;
+ const month=chosen.slice(0,7);
+ try {
+  // El CSV reciente puede no haberse cargado todavía.
+  await ensureHistory();
+  if(request!==dayRequest||selectedDay!==chosen)return;
+  const present=data.some(row=>info(row.time).day===chosen);
+  // Archivos cerrados, solo si el día no está en el CSV reciente.
+  if(!present&&!archiveData.has(month)&&month<info(new Date()).month){
+   const parsed=parse(await dataFetch('data/archivo/'+encodeURIComponent(month)+'.csv'));
+   archiveData.set(month,parsed);
+  }
+ }catch{
+  if(request===dayRequest&&selectedDay===chosen)
+   dayError='No se pudo cargar el histórico de la fecha elegida.';
+ }finally{
+  if(request===dayRequest&&selectedDay===chosen){
+   dayLoading=false;renderAnalytics();
+  }
+ }
+}
 async function selectMonth(month){
+ ++dayRequest;
+ selectedDay=null;dayLoading=false;dayError=null;
  selectedMonth=month||null;
  monthLoading=false;monthError=null;
  updatePeriodButtons();updateMonthOptions();
@@ -621,13 +674,23 @@ async function selectMonth(month){
  }
 }
 document.querySelectorAll('[data-days]').forEach(button=>button.addEventListener('click',()=>{
+ ++dayRequest;
  period=Number(button.dataset.days);
+ selectedDay=null;dayLoading=false;dayError=null;
  selectedMonth=null;monthLoading=false;monthError=null;
  updatePeriodButtons();updateMonthOptions();renderAnalytics();
 }));
 $('monthSelect').addEventListener('change',event=>{
  if(!event.target.value)period=1;
  selectMonth(event.target.value);
+});
+$('daySelect').addEventListener('change',event=>{
+ if(!event.target.value)period=1;
+ selectDay(event.target.value);
+});
+$('clearDay').addEventListener('click',()=>{
+ period=1;
+ selectDay(null);
 });
 
 function notifyInsights(){
@@ -668,6 +731,7 @@ let savedQuick=false;
 try{savedQuick=localStorage.getItem('ocupacion:quick')==='1';}catch(e){}
 $('viewToggle').addEventListener('click',()=>setQuickMode(!quickMode));
 setQuickMode(savedQuick);
+updateDayControls();
 initializing=false;
 async function ensureHistory(force=false){
  if(quickMode)return;
