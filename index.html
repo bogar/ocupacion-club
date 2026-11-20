@@ -9,6 +9,7 @@
   <title>Ocupación club · Panel de afluencia</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/desglose-model.js" defer></script>
   <script src="assets/app.js" defer></script>
   <script src="assets/insights.js" defer></script>
   <script src="assets/rooms.js" defer></script>
@@ -118,6 +119,10 @@
           <div><span>Mínimo</span><strong id="periodLow">—</strong></div>
           <div><span>Días con datos</span><strong id="periodDays">—</strong></div>
         </div>
+      </div>
+      <div class="breakdown-toolbar" role="group" aria-label="Visualización de la ocupación">
+        <button type="button" id="breakdownToggle" class="breakdown-toggle" aria-pressed="false">Ver desglose apilado</button>
+        <span id="breakdownInfo" class="breakdown-description" aria-live="polite">Las categorías se mostrarán cuando haya estimaciones validadas.</span>
       </div>
       <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Evolución de las lecturas o de las medias de ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
       <div class="footline"><span id="chartCaption">Horas locales de España peninsular</span><span id="chartCount">Sin lecturas</span></div>
