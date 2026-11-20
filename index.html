@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/app.js" defer></script>
   <script src="assets/insights.js" defer></script>
+  <script src="assets/rooms.js" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -70,6 +71,16 @@
       <article class="mini-stat"><div class="metric-label">Máximo de hoy</div><div class="metric-value" id="maxToday">—</div><div class="metric-note" id="maxTodayNote">Sin registros</div></article>
       <article class="mini-stat"><div class="metric-label">Mínimo de hoy</div><div class="metric-value" id="minToday">—</div><div class="metric-note" id="minTodayNote">Sin registros</div></article>
       <article class="mini-stat"><div class="metric-label">Lecturas recientes</div><div class="metric-value" id="totalReadings">—</div><div class="metric-note" id="totalNote">Hasta 60 días</div></article>
+    </section>
+
+    <section class="panel section-panel rooms-section" id="rooms" aria-labelledby="roomsTitle">
+      <div class="section-header"><div>
+        <div class="eyebrow muted">Actividades en curso</div>
+        <h2 id="roomsTitle">Reservas por espacio</h2>
+        <p class="section-subtitle">Estimación de plazas reservadas en actividades dirigidas, no personas detectadas físicamente en una sala.</p>
+      </div><span class="scope-pill">Espacios anónimos</span></div>
+      <div id="roomCards" class="room-cards" aria-live="polite"><p class="muted-copy room-empty">Preparando datos de las actividades.</p></div>
+      <p id="roomDataStatus" class="intelligence-footnote">Datos en preparación. No se publican nombres reales de salas, profesores ni clases.</p>
     </section>
 
     <section class="intelligence-grid" aria-label="Comparaciones y previsión">
