@@ -63,7 +63,7 @@
    const selected=group.map(r=>({total:r.people,p:nearest(points,r.time.getTime())}));
    const hasSources=selected.length&&selected.some(({p})=>p&&categories.some(k=>p[k]!==null));
    const sums=Object.fromEntries(categories.map(k=>[k,0]));
-   let valid=false;
+   let valid=false,availableKeys=[];
    if(hasSources){
     // Para vistas medias, todas las lecturas deben contar con las mismas
     // categorías conocidas; no extrapolamos los pocos datos existentes.
@@ -79,14 +79,14 @@
       for(const k of common)sums[k]=Math.round(sums[k]/selected.length);
       const included=common.reduce((n,k)=>n+sums[k],0);
       if(included<=bucket.mean){
-       valid=true;covered++;
+       valid=true;availableKeys=common;covered++;
       }else overlap++;
      }else overlap++;
     }
    }
    if(!valid)missing++;
    for(const key of categories){
-    data[key].push({x:bucket.x,y:valid&&sums[key]!==undefined?
+    data[key].push({x:bucket.x,y:valid&&availableKeys.includes(key)?
       sums[key]:null,label:bucket.label});
    }
    const used=categories.reduce((sum,k)=>sum+sums[k],0);
