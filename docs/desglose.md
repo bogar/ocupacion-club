@@ -49,3 +49,7 @@ node --test test/desglose-model.test.js
 ```
 
 Para volver al gráfico original, pulsar **Ver solo ocupación real**.
+
+### Consulta de un día concreto
+
+El control **Día** del gráfico filtra la serie de ocupación real y el desglose estimado por una única fecha local de Madrid, con los puntos originales de cada lectura. No usa medias horarias ni diarias cuando está seleccionado un día. Para fechas fuera del CSV reciente consulta el archivo mensual necesario bajo demanda. **Limpiar** restaura Hoy. La ausencia de una serie deportiva no equivale a cero personas: el gráfico mantiene la línea medida.
