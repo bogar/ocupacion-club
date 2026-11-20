@@ -222,3 +222,12 @@ body.quick-mode .method-note{display:none}
  .view-toggle{padding:9px 11px}
  body.quick-mode .current-card{padding:21px}
 }
+
+/* Agregados anónimos de reservas por espacio, independientes del contador real. */
+.room-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px}
+.room-card{border:1px solid #e3ebf6;background:#f7fafe;border-radius:14px;padding:19px 21px;display:flex;flex-direction:column;gap:8px;min-height:139px}
+.room-name{font-size:12px;font-weight:750;color:#597694}
+.room-people{font-size:37px;line-height:1.1;font-weight:800;color:#234c77;font-variant-numeric:tabular-nums}
+.room-subtitle{font-size:11px;color:#8295aa}
+.room-empty{padding:12px 4px;grid-column:1/-1}
+@media(max-width:520px){.room-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.room-card{padding:14px}.room-people{font-size:32px}}
