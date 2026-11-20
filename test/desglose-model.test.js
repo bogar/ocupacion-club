@@ -55,3 +55,20 @@ test('solo empareja lecturas proximas, nunca datos de otro dia',()=>{
   points:[mk('2026-11-19T14:00:00.000Z',{directed:20})]});
  assert.equal(model.nearest(points,time),null);
 });
+
+test('la serie pública real de 15 minutos se alinea con muestras de 5 minutos',()=>{
+ const point='2026-11-20T13:37:30.000Z';
+ const data=model.parse({version:1,metric:'estimated_people_by_category',
+  points:[mk(point,{directed:15,tennis:null,squash:null,fronton:null})]});
+ const times=['2026-11-20T13:35:00.000Z','2026-11-20T13:40:00.000Z',
+  '2026-11-20T13:45:00.000Z'];
+ const readings=times.map(time=>({time:new Date(time),people:100}));
+ const summary=readings.map(({time,people})=>({
+  x:time.getTime(),mean:people,max:people,count:1,label:time.toISOString()
+ }));
+ const result=model.build(summary,readings,'raw',data,fakeInfo);
+ assert.equal(result.coverage,3);
+ assert.deepEqual(result.series.directed.map(p=>p.y),[15,15,15]);
+ assert.deepEqual(result.series.tennis.map(p=>p.y),[null,null,null]);
+ assert.deepEqual(result.series.unattributed.map(p=>p.y),[85,85,85]);
+});
