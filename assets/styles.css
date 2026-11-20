@@ -78,6 +78,16 @@ h1{font-size:23px;line-height:1.2;letter-spacing:-.85px;font-weight:800;margin:0
 .segmented button.selected{background:#fff;color:#234c7d;box-shadow:0 2px 9px #233a6021}
 .month-picker{display:flex;align-items:center;gap:8px;color:#718198;font-size:12px;font-weight:700;white-space:nowrap}
 .month-picker select{border:1px solid #dce6f1;border-radius:10px;padding:10px 27px 10px 10px;color:#234c7d;background:#fff;cursor:pointer;font-size:12px;font-weight:650;min-width:125px;max-width:190px}
+
+.date-control{display:flex;align-items:center;gap:6px;min-width:0}
+.date-picker{display:flex;align-items:center;gap:8px;color:#718198;font-size:12px;font-weight:700;white-space:nowrap}
+.date-picker input{box-sizing:border-box;border:1px solid #dce6f1;border-radius:10px;padding:9px 9px;color:#234c7d;background:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:650;width:146px;min-height:38px;max-width:100%;color-scheme:light}
+.date-picker input:focus-visible,.date-clear:focus-visible{outline:3px solid #9abfe7;outline-offset:2px}
+.date-picker input[data-selected="true"]{background:#eaf3fe;border-color:#a5c6ec}
+.date-clear{border:0;border-radius:8px;background:#eef3fa;color:#5d7691;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:8px}
+.date-clear:hover{background:#e1ecfa}
+.date-clear[hidden]{display:none}
+
 .period-strip{border:1px solid #e8eef7;background:linear-gradient(100deg,#f8fafe,#f3f7fc);padding:16px 20px;margin:3px 0 18px;border-radius:14px;display:flex;align-items:center;gap:22px}
 .period-strip-heading{min-width:140px;display:flex;flex-direction:column;gap:6px}
 .strip-kicker{font-size:9px;letter-spacing:.11em;font-weight:800;color:#8ca0ba}
@@ -149,6 +159,9 @@ footer{font-size:11px;color:#8a99ae;border-top:1px solid #e0e8f2;padding-top:19p
  .period-controls{width:100%;gap:11px;align-items:flex-start}
  .segmented{width:100%}
  .segmented button{flex:1}
+ .date-control{width:100%;justify-content:space-between}
+ .date-picker{flex:1;justify-content:space-between}
+ .date-picker input{width:60%;max-width:190px}
  .month-picker{width:100%;justify-content:space-between}
  .month-picker select{width:60%;max-width:none}
  .period-strip{padding:15px}
