@@ -116,12 +116,12 @@ async function loadBreakdown(){
   if(!points)throw Error('Desglose no validado.');
   breakdownPoints=points;
   breakdownLoaded=true;
-  if(note)note.textContent=points.length?
+  if(note&&breakdownEnabled)note.textContent=points.length?
    'Reservas y uso deportivo estimados; total de personas medido.':
    'Aún no hay estimaciones por categoría publicadas y validadas.';
  }catch{
   breakdownPoints=[];
-  if(note)note.textContent='Desglose pendiente de validación. Solo mostramos personas medidas.';
+  if(note&&breakdownEnabled)note.textContent='Desglose pendiente de validación. Solo mostramos personas medidas.';
  }finally{
   breakdownLoading=false;
   if(!quickMode)renderAnalytics();
