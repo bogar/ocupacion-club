@@ -9,7 +9,7 @@ const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/'
 // from the repository without requiring a Pages deploy every five minutes.
 async function dataFetch(path,kind='text'){
  // No recurrimos a una copia antigua de Pages para el dato actual.
- const live=['data/latest.json','data/live.csv','data/reading-status.json'].includes(path);
+ const live=['data/latest.json','data/live.csv','data/reading-status.json','data/desglose.json'].includes(path);
  const candidates=live?[DATA_ROOT+path+'?t='+Date.now()]:
   [DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
  let lastError;
@@ -105,6 +105,14 @@ function ensureCharts(){
 let monthLoading=false,monthError=null,dayLoading=false,dayError=null,dayRequest=0,trendChart=null,profileChart=null;
 
 let breakdownEnabled=false,breakdownPoints=[],breakdownLoaded=false,breakdownLoading=false;
+let breakdownCheckedAt=null,breakdownFailed=false;
+function breakdownInfo(message){
+ if(breakdownFailed)return message+' · No se pudo comprobar si hay nuevos datos.';
+ return message+(breakdownCheckedAt?
+  ' · Datos consultados a las '+new Intl.DateTimeFormat('es-ES',{
+   timeZone:zone,hour:'2-digit',minute:'2-digit'
+  }).format(breakdownCheckedAt):'');
+}
 async function loadBreakdown(){
  // Reconsultar al volver a activar el modo apilado: una fuente que estaba
  // vacía puede haberse publicado mientras la página seguía abierta.
@@ -118,12 +126,18 @@ async function loadBreakdown(){
   if(!points)throw Error('Desglose no validado.');
   breakdownPoints=points;
   breakdownLoaded=true;
+  breakdownCheckedAt=new Date();
+  breakdownFailed=false;
   if(note&&breakdownEnabled)note.textContent=points.length?
    'Reservas y uso deportivo estimados; total de personas medido.':
    'Aún no hay estimaciones por categoría publicadas y validadas.';
  }catch{
-  breakdownPoints=[];
-  if(note&&breakdownEnabled)note.textContent='Desglose pendiente de validación. Solo mostramos personas medidas.';
+  breakdownFailed=true;
+  // Una consulta fallida no invalida el último conjunto verificado.
+  if(!breakdownLoaded)breakdownPoints=[];
+  if(note&&breakdownEnabled)note.textContent=breakdownInfo(
+   breakdownLoaded?'Se conserva el último desglose válido.':
+   'Desglose pendiente de validación. Solo mostramos personas medidas.');
  }finally{
   breakdownLoading=false;
   if(!quickMode)renderAnalytics();
@@ -412,12 +426,13 @@ function trend(){
     borderWidth:2.8,pointRadius:0,pointHoverRadius:5,fill:false,tension:.12,spanGaps:false
    });
    $('chartCaption').textContent='Total real (línea oscura) · Componentes estimados (áreas) · Sin atribuir es un residual teórico.';
-   $('breakdownInfo').textContent=number(layered.coverage)+' de '+number(layered.total)+
-    ' puntos con estimaciones comparables.';
-  }else $('breakdownInfo').textContent='No hay estimaciones coincidentes con este periodo. Se muestra el total real.';
+   $('breakdownInfo').textContent=breakdownInfo(
+    number(layered.coverage)+' de '+number(layered.total)+
+    ' puntos con estimaciones comparables.');
+  }else $('breakdownInfo').textContent=breakdownInfo('No hay estimaciones coincidentes con este periodo. Se muestra el total real.');
  }else if(breakdownEnabled){
   $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
-    'Desglose sin estimaciones validadas. Se muestra el total real.';
+    breakdownInfo('Desglose sin estimaciones validadas. Se muestra el total real.');
  }
  $('trendChart').hidden=false;$('chartEmpty').hidden=true;
  trendChart=new Chart($('trendChart'),{
@@ -807,4 +822,11 @@ refresh();
 setInterval(refresh,60000);
 setInterval(()=>{if(!quickMode)ensureHistory(true);},3600000);
 setInterval(()=>{if(!quickMode)loadArchiveIndex();},300000);
+// Reconsultar solo mientras se visualiza el desglose, sin refrescar la página.
+setInterval(()=>{
+ if(!quickMode&&breakdownEnabled&&document.visibilityState==='visible')loadBreakdown();
+},120000);
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'&&breakdownEnabled&&!quickMode)loadBreakdown();
+});
 })();
