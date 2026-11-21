@@ -20,6 +20,23 @@ test('no publica cifras exactas de 1 a 4 personas en un grupo',()=>{
  assert.equal(result[0].directed,null);
  assert.equal(result[0].squash,5);
 });
+test('la versión 2 muestra múltiplos pequeños del modelo deportivo y conserva los huecos',()=>{
+ const at='2026-11-20T13:37:30.000Z';
+ const next='2026-11-20T14:07:30.000Z';
+ const candidate={version:2,metric:'estimated_people_by_category',
+  points:[mk(at,{directed:3,tennis:3,squash:2,fronton:4}),mk(next,{fronton:0})]};
+ const points=model.parse(candidate);
+ assert.deepEqual([points[0].directed,points[0].tennis,points[0].squash,points[0].fronton],
+                  [null,3,2,4]);
+ assert.equal(model.nearest(points,Date.parse('2026-11-20T13:44:59.000Z')).fronton,4);
+ assert.equal(model.nearest(points,Date.parse('2026-11-20T13:45:01.000Z')),null);
+ assert.equal(model.nearest(points,Date.parse('2026-11-20T14:00:00.000Z')).fronton,0);
+ assert.equal(model.parse({...candidate,points:[mk(at,{fronton:3})]}),null);
+ const summary=[{x:Date.parse(at),mean:100,label:'13:37',count:1}];
+ const result=model.build(summary,[raw(at)],'raw',points,fakeInfo);
+ assert.equal(result.series.fronton[0].y,4);
+ assert.equal(result.series.unattributed[0].y,91);
+});
 test('apila solo datos conocidos y conserva resto sin atribuir',()=>{
  const time='2026-11-20T14:00:00.000Z';
  const points=model.parse({version:1,metric:'estimated_people_by_category',

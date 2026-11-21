@@ -425,7 +425,10 @@ function trend(){
     borderColor:'#1d3557',backgroundColor:'transparent',
     borderWidth:2.8,pointRadius:0,pointHoverRadius:5,fill:false,tension:.12,spanGaps:false
    });
-   $('chartCaption').textContent='Total real (línea oscura) · Componentes estimados (áreas) · Sin atribuir es un residual teórico.';
+   const sportsShown=breakdownPoints[0]?.quarter&&
+    ['tennis','squash','fronton'].some(key=>layered.series[key].some(point=>point.y!==null));
+   $('chartCaption').textContent='Total real (línea oscura) · Componentes estimados (áreas) · Sin atribuir es un residual teórico.'+
+    (sportsShown?' El modelo asigna a cada pista no reservable 3 personas en tenis, 2 en esquaix y 4 en frontón.':'');
    $('breakdownInfo').textContent=breakdownInfo(
     number(layered.coverage)+' de '+number(layered.total)+
     ' puntos con estimaciones comparables.');

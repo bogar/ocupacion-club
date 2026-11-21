@@ -9,9 +9,12 @@
  const aliases={directed:'Actividades dirigidas',tennis:'Tenis',squash:'Esquaix',fronton:'Frontón'};
  const MAX_POINTS=18000;
  const TOLERANCE_MS=8*60*1000;
+ const QUARTER_MS=15*60*1000;
+ const sports={tennis:[3,15],squash:[2,6],fronton:[4,4]};
  function parse(input){
-  if(!input||input.version!==1||input.metric!=='estimated_people_by_category'||
+  if(!input||![1,2].includes(input.version)||input.metric!=='estimated_people_by_category'||
     !Array.isArray(input.points)||input.points.length>MAX_POINTS)return null;
+  const quarter=input.version===2;
   const points=[],seen=new Set();
   for(const item of input.points){
    if(!item||typeof item!=='object'||Array.isArray(item))return null;
@@ -19,15 +22,20 @@
    if(typeof item.timestamp!=='string')return null;
    const ms=Date.parse(item.timestamp);
    if(!Number.isFinite(ms)||new Date(ms).toISOString()!==item.timestamp||seen.has(ms))return null;
+   if(quarter&&ms%QUARTER_MS!==QUARTER_MS/2)return null;
    seen.add(ms);
    const entry={ms};
+   if(quarter)entry.quarter=true;
    for(const key of categories){
     const v=item[key];
     if(v===undefined||v===null){entry[key]=null;continue;}
-    // No se publican recuentos exactos de grupos pequeños. Estos datos
-    // deben agregarse y validarse previamente en el exportador privado.
     if(!Number.isSafeInteger(v)||v<0||v>1000)return null;
-    entry[key]=v>0&&v<5?null:v;
+    if(quarter&&key!=='directed'){
+     // Los valores deportivos son múltiplos del modelo por pista.
+     const [factor,max]=sports[key];
+     if(v>max||v%factor!==0)return null;
+     entry[key]=v;
+    }else entry[key]=v>0&&v<5?null:v;
    }
    points.push(entry);
   }
@@ -35,9 +43,12 @@
   return points;
  }
  function nearest(points,ms){
+  const quarter=points[0]?.quarter;
+  const target=quarter?Math.floor(ms/QUARTER_MS)*QUARTER_MS+QUARTER_MS/2:ms;
   let a=0,b=points.length;
-  while(a<b){const mid=(a+b)>>1;if(points[mid].ms<ms)a=mid+1;else b=mid;}
+  while(a<b){const mid=(a+b)>>1;if(points[mid].ms<target)a=mid+1;else b=mid;}
   const before=a>0?points[a-1]:null,after=a<points.length?points[a]:null;
+  if(quarter)return after?.ms===target?after:null;
   const best=before&&after?
     (ms-before.ms<=after.ms-ms?before:after):(before||after);
   return best&&Math.abs(best.ms-ms)<=TOLERANCE_MS?best:null;
