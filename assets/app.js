@@ -513,7 +513,8 @@ function trend(){
   type:'line',data:{datasets:series},plugins:[nowLine],
   options:{
    responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
-   interaction:{mode:'index',intersect:false},
+   interaction:futureShown?{mode:'nearest',axis:'x',intersect:false}:
+    {mode:'index',intersect:false},
    plugins:{
     legend:{display:aggregate||stacked||futureShown>0,position:'bottom',labels:{
      usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11},
