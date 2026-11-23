@@ -107,5 +107,25 @@
   return {available:covered>0,coverage:covered,total:summary.length,missing,overlap,
    series:data,labels:aliases};
  }
- return {parse,nearest,build,categories,aliases};
+
+ function parseRecent(input,now=Date.now()){
+  if(!input||typeof input!=='object'||Array.isArray(input)||
+    Object.keys(input).sort().join(',')!==
+      'generated_at,metric,points,valid_until,version'||
+    input.metric!=='recent_category_estimates'||![1,2].includes(input.version)||
+    !Array.isArray(input.points)||input.points.length>13)return null;
+  const generated=Date.parse(input.generated_at),until=Date.parse(input.valid_until);
+  if(typeof input.generated_at!=='string'||typeof input.valid_until!=='string'||
+    !Number.isFinite(generated)||!Number.isFinite(until)||
+    new Date(generated).toISOString()!==input.generated_at||
+    new Date(until).toISOString()!==input.valid_until||
+    until<=generated||until-generated>30*60000||
+    now<generated-60000||now>until)return null;
+  const points=parse({version:input.version,
+   metric:'estimated_people_by_category',points:input.points});
+  if(!points||points.some(p=>p.ms>generated||generated-p.ms>3*3600000||
+    categories.every(key=>p[key]===null)))return null;
+  return {points,until};
+ }
+ return {parse,parseRecent,nearest,build,categories,aliases};
 });
