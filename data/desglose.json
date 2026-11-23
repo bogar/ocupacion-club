@@ -995,6 +995,20 @@
       "tennis": 15,
       "squash": null,
       "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T17:07:30.000Z",
+      "directed": null,
+      "tennis": 12,
+      "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T17:22:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
     }
   ]
 }
