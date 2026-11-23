@@ -497,32 +497,61 @@ function trend(){
  const nowMs=Date.now();
  const future=(futureEnabled&&window.OcupacionPrevision)?
   window.OcupacionPrevision.series(forecastDoc,nowMs):null;
+ const ongoing=(futureEnabled&&window.OcupacionPrevision)?
+  window.OcupacionPrevision.ongoing(forecastDoc,nowMs):null;
  const futureStyles=[
   ['directed','Actividades dirigidas','#317ac2'],
   ['tennis','Tenis','#c88b39'],
   ['squash','Esquaix','#8f63ba'],
   ['fronton','Frontón','#299786']
  ];
+ // Franja actual: estimación basada en reservas anteriores al comienzo,
+ // línea continua sin puntos, separada del total real y de la previsión.
+ let ongoingShown=0;
+ if(ongoing){
+  for(const [key,label,color] of futureStyles){
+   const value=ongoing.values[key];
+   if(value===null)continue;
+   ongoingShown++;
+   series.push({
+    label:label+' (franja actual)',parsing:false,
+    data:[{x:ongoing.start,y:value,ongoing:true},
+          {x:ongoing.now,y:value,ongoing:true}],
+    stack:'franja-actual-'+key,ongoing:true,
+    borderColor:color,backgroundColor:'transparent',
+    borderWidth:2.4,pointRadius:0,pointHoverRadius:0,pointHitRadius:8,
+    fill:false,tension:0,spanGaps:false
+   });
+  }
+ }
  let futureShown=0;
  if(future){
   for(const [key,label,color] of futureStyles){
-   const points=future[key]||[];
+   const points=[...(future[key]||[])];
    if(!points.some(p=>p.y!==null))continue;
+   // Prolongamos hasta la previsión solo si hay dos estimaciones válidas
+   // consecutivas, sin unir períodos desconocidos ni proyectar aforo real.
+   if(ongoing&&ongoing.values[key]!==null&&
+      points[0]?.y!==null&&points[0].x-ongoing.now<=30*60000){
+    points.unshift({x:ongoing.now,y:ongoing.values[key],forecast:true,bridge:true});
+   }
    futureShown++;
    series.push({
     label:label+' (previsión)',data:points,parsing:false,
     stack:'prevision-'+key,forecast:true,
     borderColor:color,backgroundColor:'transparent',
     borderDash:[5,5],borderWidth:2.2,
-    pointRadius:2,pointHoverRadius:5,fill:false,tension:0,spanGaps:false
+    pointRadius:p=>p.raw?.bridge?0:2,
+    pointHoverRadius:5,fill:false,tension:0,spanGaps:false
    });
   }
  }
  const futureInfo=$('forecastInfo');
  if(futureInfo){
   futureInfo.hidden=!futureEnabled;
-  if(futureEnabled)futureInfo.textContent=futureShown?
-   'Previsión de reservas para las próximas 2 h (líneas discontinuas). '+
+  if(futureEnabled)futureInfo.textContent=(futureShown||ongoingShown)?
+   (ongoingShown?'Franja en curso: línea continua sin puntos (estimación de reservas). ':'')+
+   (futureShown?'Próximas 2 h: líneas discontinuas. ':'')+
    'Las pistas representan disponibilidad no reservable, no asistencia confirmada.':
    forecastLoading?'Comprobando previsión de las próximas 2 h…':
    forecastFailed?'Previsión no disponible; el histórico se mantiene sin cambios.':
@@ -531,7 +560,7 @@ function trend(){
  const nowLine={
   id:'futureNowLine',
   afterDraw(chart){
-   if(!futureShown)return;
+   if(!futureShown&&!ongoingShown)return;
    const x=chart.scales.x.getPixelForValue(nowMs);
    const {ctx,chartArea}=chart;
    if(!Number.isFinite(x)||x<chartArea.left||x>chartArea.right)return;
@@ -549,20 +578,24 @@ function trend(){
   type:'line',data:{datasets:series},plugins:[nowLine],
   options:{
    responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
-   interaction:futureShown?{mode:'nearest',axis:'x',intersect:false}:
+   interaction:(futureShown||ongoingShown)?{mode:'nearest',axis:'x',intersect:false}:
     {mode:'index',intersect:false},
    plugins:{
-    legend:{display:aggregate||stacked||futureShown>0,position:'bottom',labels:{
+    legend:{display:aggregate||stacked||futureShown>0||ongoingShown>0,position:'bottom',labels:{
      usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11},
      // En móvil evitar cuatro entradas duplicadas: color heredado + trazo discontinuo.
-     filter:item=>!stacked||!item.text.endsWith(' (previsión)')
+     filter:item=>!stacked||(
+      !item.text.endsWith(' (previsión)')&&
+      !item.text.endsWith(' (franja actual)'))
     }},
     tooltip:{callbacks:{
      title:items=>items[0]?.raw?.label||
-      (items[0]?.raw?.forecast?timeFormat.format(new Date(items[0].raw.x)):''),
+      (items[0]?.raw?.forecast||items[0]?.raw?.ongoing?
+       timeFormat.format(new Date(items[0].raw.x)):''),
 
      label:item=>item.dataset.label+': '+number(item.parsed.y)+
-       (item.dataset.forecast?' personas equivalentes previstas (reservas, no asistencia)':
+       (item.dataset.ongoing?' personas equivalentes en esta franja (reservas, no asistencia)':
+        item.dataset.forecast?' personas equivalentes previstas (reservas, no asistencia)':
         stacked&&item.dataset.stack==='componentes'?' personas equivalentes estimadas':' personas medidas'),
      footer:items=>aggregate?(items[0].raw.count+' lecturas en el intervalo'):''
     }}
