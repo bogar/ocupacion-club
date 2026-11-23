@@ -66,7 +66,9 @@
  }
  function active(doc,now=Date.now()){
   if(!doc||!Number.isFinite(now)||now<doc.generated-60000||now>doc.until)return [];
-  return doc.points.filter(p=>p.ms>now&&p.ms<=now+HORIZON);
+  // Una franja ya iniciada no es futuro aunque su centro sea posterior
+  // a "Ahora". Solo el campo current puede representarla sin marcadores.
+  return doc.points.filter(p=>p.ms-STEP/2>now&&p.ms<=now+HORIZON);
  }
  function ongoing(doc,now=Date.now()){
   if(!doc||!Number.isFinite(now)||now<doc.generated-60000||now>doc.until||
