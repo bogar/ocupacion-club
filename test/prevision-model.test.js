@@ -61,7 +61,11 @@ test('v2 incluye franja en curso y desaparece al cambiar el cuarto de hora',()=>
  assert.equal(active.start,Date.parse('2026-11-23T13:45:00.000Z'));
  assert.equal(active.values.tennis,9);
  assert.equal(active.values.squash,null);
- assert.equal(model.ongoing(parsed,Date.parse('2026-11-23T14:01:00.000Z')),null);
+ // La franja futura conocida ANTES de empezar no desaparece al pasar
+ // por el límite de 15 minutos: pasa a representarse como provisional actual.
+ const rollover=model.ongoing(parsed,Date.parse('2026-11-23T14:01:00.000Z'));
+ assert.equal(rollover.start,Date.parse('2026-11-23T14:00:00.000Z'));
+ assert.equal(rollover.values.directed,20);
  assert.equal(model.ongoing(parsed,Date.parse('2026-11-23T14:16:00.000Z')),null);
 });
 test('v2 rechaza datos privados, valores imposibles y centro de franja incorrecto',()=>{
@@ -85,4 +89,56 @@ test('una franja ya empezada nunca se muestra como previsión futura',()=>{
  const upcoming=model.active(doc,now);
  assert.deepEqual(upcoming.map(p=>new Date(p.ms).toISOString()),
   ['2026-11-23T14:22:30.000Z']);
+});
+
+test('líneas temporales abarcan la duración de franjas consecutivas sin inventar huecos',()=>{
+ const doc=model.parse(valid());
+ const now=Date.parse('2026-11-23T13:55:00.000Z');
+ const parts=model.intervals(doc,now);
+ assert.deepEqual(parts.directed,[{
+  start:Date.parse('2026-11-23T14:00:00.000Z'),
+  end:Date.parse('2026-11-23T14:30:00.000Z'),
+  value:20,phase:'future'
+ }]);
+ assert.deepEqual(parts.tennis,[{
+  start:Date.parse('2026-11-23T14:00:00.000Z'),
+  end:Date.parse('2026-11-23T14:15:00.000Z'),
+  value:9,phase:'future'
+ }]);
+ assert.deepEqual(parts.squash,[]);
+});
+
+test('franja recién iniciada conserva la previsión previa pero no reescribe el pasado',()=>{
+ const doc=model.parse(valid());
+ const now=Date.parse('2026-11-23T14:05:00.000Z');
+ const current=model.intervals(doc,now);
+ assert.deepEqual(current.directed,[{
+  start:now,end:Date.parse('2026-11-23T14:15:00.000Z'),
+  value:20,phase:'current'
+ },{
+  start:Date.parse('2026-11-23T14:15:00.000Z'),
+  end:Date.parse('2026-11-23T14:30:00.000Z'),
+  value:20,phase:'future'
+ }]);
+ // Captura generada DESPUÉS del inicio: no puede justificar retrospectivamente
+ // un cuarto ya empezado que no tenga observación previa.
+ const bad={...valid(),generated_at:'2026-11-23T14:05:00.000Z',
+  valid_until:'2026-11-23T14:15:00.000Z'};
+ const parsed=model.parse(bad);
+ assert.equal(model.ongoing(parsed,now),null);
+});
+
+test('las franjas desconocidas se cortan y un cero verificado no se trata como desconocido',()=>{
+ const doc=valid();
+ doc.points=[
+  point('2026-11-23T14:07:30.000Z',{fronton:0}),
+  point('2026-11-23T14:22:30.000Z',{fronton:null}),
+  point('2026-11-23T14:37:30.000Z',{fronton:4})
+ ];
+ const parsed=model.parse(doc),now=Date.parse('2026-11-23T13:55:00.000Z');
+ const values=model.intervals(parsed,now).fronton;
+ assert.equal(values.length,2);
+ assert.equal(values[0].value,0);
+ assert.equal(values[0].end,Date.parse('2026-11-23T14:15:00.000Z'));
+ assert.equal(values[1].start,Date.parse('2026-11-23T14:30:00.000Z'));
 });
