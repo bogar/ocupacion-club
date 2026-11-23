@@ -1005,10 +1005,94 @@
     },
     {
       "timestamp": "2026-11-23T17:22:30.000Z",
-      "directed": null,
+      "directed": 60,
       "tennis": 15,
       "squash": null,
       "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T17:37:30.000Z",
+      "directed": 60,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T17:52:30.000Z",
+      "directed": 60,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T18:07:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T18:22:30.000Z",
+      "directed": 45,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T18:37:30.000Z",
+      "directed": 45,
+      "tennis": 12,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T18:52:30.000Z",
+      "directed": 45,
+      "tennis": 12,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T19:07:30.000Z",
+      "directed": null,
+      "tennis": 12,
+      "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T19:22:30.000Z",
+      "directed": 20,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T19:37:30.000Z",
+      "directed": 20,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-23T19:52:30.000Z",
+      "directed": 20,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 4
+    },
+    {
+      "timestamp": "2026-11-23T20:07:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": 2,
+      "fronton": 4
+    },
+    {
+      "timestamp": "2026-11-23T20:22:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 4
     }
   ]
 }
