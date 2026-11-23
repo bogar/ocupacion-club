@@ -33,7 +33,7 @@ La lectura más reciente también se publica por separado en [`data/latest.json`
 La fecha es UTC en formato ISO 8601. El archivo es accesible desde `https://bogar.github.io/ocupacion-club/data/latest.json` una vez desplegado Pages. No incluye el nombre del centro ni ningún identificador.
 
 Las funciones de fechas del mapa de calor tienen pruebas sin dependencias externas:
-`node --test tests/heatmap-model.test.cjs`. Todos los periodos usan días naturales de
+`node --test test/heatmap-model.test.js`. Todos los periodos usan días naturales de
 `Europe/Madrid`; el navegador no solicita nuevos endpoints ni descarga archivos
 mensuales adicionales al cambiar entre estos filtros.
 
