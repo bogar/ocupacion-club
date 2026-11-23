@@ -9,7 +9,7 @@ Panel web público, sin identificación del centro ni detalles de su proveedor.
 - **Resumen del periodo elegido:** media, máximo, mínimo y número de días con observaciones.
 - **Evolución legible a gran escala:** lecturas originales para hoy, agrupación horaria para 7 días y agrupación diaria para 30 días o un mes completo. Cada grupo muestra tanto la media como el máximo observado.
 - **Perfil horario:** comparación de días laborables y fines de semana, sin incluir una categoría hasta tener al menos tres jornadas. Las medias se calculan por día primero, evitando dar más peso a las horas con más lecturas.
-- **Mapa de calor semanal** y recomendaciones de horarios tranquilos basadas en al menos tres jornadas de datos por franja. Estas estadísticas usan los últimos 30 días, o el mes seleccionado.
+- **Mapa de calor con selector temporal:** vista **Habitual** (por defecto, últimos 30 días o mes seleccionado), **Hoy**, **Ayer**, **7 días naturales** y **Otros lunes/martes/...** (media del mismo día de la semana en las 8 semanas anteriores, sin incluir hoy). Las vistas de un solo día ocupan una fila y los 7 días se ordenan cronológicamente. Los huecos indican ausencia de lecturas, no ocupación cero. Las recomendaciones de horarios tranquilos siguen basándose en al menos tres jornadas por franja, con los últimos 30 días o el mes elegido.
 - **Estado de actualización:** aviso si la última lectura supera 20 minutos o si falla la consulta de datos.
 
 El panel utiliza el histórico reciente `data/ocupacion.csv`, con el formato:
@@ -31,6 +31,11 @@ La lectura más reciente también se publica por separado en [`data/latest.json`
 ```
 
 La fecha es UTC en formato ISO 8601. El archivo es accesible desde `https://bogar.github.io/ocupacion-club/data/latest.json` una vez desplegado Pages. No incluye el nombre del centro ni ningún identificador.
+
+Las funciones de fechas del mapa de calor tienen pruebas sin dependencias externas:
+`node --test tests/heatmap-model.test.cjs`. Todos los periodos usan días naturales de
+`Europe/Madrid`; el navegador no solicita nuevos endpoints ni descarga archivos
+mensuales adicionales al cambiar entre estos filtros.
 
 ## Publicación de la web y de los datos
 
