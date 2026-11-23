@@ -9,7 +9,7 @@ const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/'
 // from the repository without requiring a Pages deploy every five minutes.
 async function dataFetch(path,kind='text'){
  // No recurrimos a una copia antigua de Pages para el dato actual.
- const live=['data/latest.json','data/live.csv','data/reading-status.json','data/desglose.json','data/prevision.json'].includes(path);
+ const live=['data/latest.json','data/live.csv','data/reading-status.json','data/desglose.json','data/prevision.json','data/desglose-reciente.json'].includes(path);
  const candidates=live?[DATA_ROOT+path+'?t='+Date.now()]:
   [DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
  let lastError;
@@ -143,6 +143,34 @@ async function loadBreakdown(){
   if(!quickMode)renderAnalytics();
  }
 }
+
+let breakdownRecentPoints=[],breakdownRecentExpiry=0,breakdownRecentLoading=false;
+async function loadBreakdownRecent(){
+ if(breakdownRecentLoading)return;
+ breakdownRecentLoading=true;
+ try{
+  const json=await dataFetch('data/desglose-reciente.json','json');
+  const doc=window.OcupacionDesglose?.parseRecent(json);
+  if(!doc)throw Error('Desglose reciente caducado o inválido.');
+  breakdownRecentPoints=doc.points;
+  breakdownRecentExpiry=doc.until;
+ }catch{
+  // La última previsión válida solo se usa hasta su caducidad.
+  if(Date.now()>=breakdownRecentExpiry)breakdownRecentPoints=[];
+ }finally{
+  breakdownRecentLoading=false;
+  if(!quickMode)renderAnalytics();
+ }
+}
+function effectiveBreakdown(){
+ if(selectedDay||selectedMonth||period!==1||
+    !breakdownRecentPoints.length||Date.now()>breakdownRecentExpiry)
+  return breakdownPoints;
+ // Las franjas recientes y consolidadas usan el mismo modelo de 15 min.
+ const byTime=new Map(breakdownPoints.map(p=>[p.ms,p]));
+ for(const point of breakdownRecentPoints)byTime.set(point.ms,point);
+ return [...byTime.values()].sort((a,b)=>a.ms-b.ms);
+}
 let forecastDoc=null,forecastLoading=false,forecastFailed=false;
 async function loadForecast(){
  if(forecastLoading)return;
@@ -172,6 +200,7 @@ if(breakdownButton)breakdownButton.addEventListener('click',()=>{
   // se comprueba si hay una versión más reciente.
   if(!quickMode)renderAnalytics();
   loadBreakdown();
+  loadBreakdownRecent();
   loadForecast();
  }else {
   $('breakdownInfo').textContent='Solo ocupación real, sin estimaciones.';
@@ -416,8 +445,9 @@ function trend(){
   parsing:false,borderColor:'#d99051',backgroundColor:'transparent',
   borderDash:[4,4],borderWidth:1.5,pointRadius:0,pointHoverRadius:4,fill:false,tension:.12
  });
- if(breakdownEnabled&&window.OcupacionDesglose&&breakdownPoints.length){
-  const layered=window.OcupacionDesglose.build(summary,rows,granularity,breakdownPoints,info);
+ const effectivePoints=breakdownEnabled?effectiveBreakdown():[];
+ if(breakdownEnabled&&window.OcupacionDesglose&&effectivePoints.length){
+  const layered=window.OcupacionDesglose.build(summary,rows,granularity,effectivePoints,info);
   if(layered.available){
    stacked=true;
    const categories=[
@@ -444,13 +474,16 @@ function trend(){
     borderColor:'#1d3557',backgroundColor:'transparent',
     borderWidth:2.8,pointRadius:0,pointHoverRadius:5,fill:false,tension:.12,spanGaps:false
    });
-   const sportsShown=breakdownPoints[0]?.quarter&&
+   const sportsShown=effectivePoints[0]?.quarter&&
     ['tennis','squash','fronton'].some(key=>layered.series[key].some(point=>point.y!==null));
    $('chartCaption').textContent='Total real (línea oscura) · Componentes estimados (áreas) · Sin atribuir es un residual teórico.'+
     (sportsShown?' El modelo asigna a cada pista no reservable 3 personas en tenis, 2 en esquaix y 4 en frontón.':'');
    $('breakdownInfo').textContent=breakdownInfo(
     number(layered.coverage)+' de '+number(layered.total)+
-    ' puntos con estimaciones comparables.');
+    ' puntos con estimaciones comparables.'+
+     (period===1&&!selectedDay&&!selectedMonth&&
+      Date.now()<breakdownRecentExpiry&&breakdownRecentPoints.length?
+      ' · Últimas 3 h actualizadas con capturas recientes.':''));
   }else $('breakdownInfo').textContent=breakdownInfo('No hay estimaciones coincidentes con este periodo. Se muestra el total real.');
  }else if(breakdownEnabled){
   $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
@@ -907,7 +940,7 @@ setInterval(()=>{if(!quickMode)loadArchiveIndex();},300000);
 // Reconsultar solo mientras se visualiza el desglose, sin refrescar la página.
 setInterval(()=>{
  if(!quickMode&&breakdownEnabled&&document.visibilityState==='visible'){
-  loadBreakdown();loadForecast();
+  loadBreakdown();loadBreakdownRecent();loadForecast();
  }
 },120000);
 document.addEventListener('visibilitychange',()=>{
