@@ -111,6 +111,11 @@ h1{font-size:23px;line-height:1.2;letter-spacing:-.85px;font-weight:800;margin:0
 .l3,.heat-3{background:#91bce7}
 .l4,.heat-4{background:#5488c2}
 .l5,.heat-5{background:#2c568d}
+.heatmap-filters{display:flex;align-items:center;flex-wrap:wrap;gap:3px;width:max-content;max-width:100%;margin:-2px 0 17px;padding:4px;border-radius:12px;background:#f1f4f9}
+.heatmap-filters button{border:0;border-radius:9px;background:transparent;color:#70819a;font:inherit;font-size:12px;font-weight:750;padding:9px 13px;cursor:pointer;white-space:nowrap}
+.heatmap-filters button:hover{color:#24527c}
+.heatmap-filters button.selected{background:#fff;color:#234c7d;box-shadow:0 2px 9px #233a6021}
+.heatmap-filters button:focus-visible{outline:3px solid #9abfe7;outline-offset:2px}
 .heatmap-scroll{overflow-x:auto;scrollbar-color:#cdd7e5 transparent;padding-bottom:3px}
 .heatmap{display:grid;grid-template-columns:66px repeat(18,minmax(35px,1fr));gap:4px;min-width:790px}
 .heat-header,.heat-day{font-size:11px;color:#78899f;text-align:center;padding:7px 0}
@@ -170,6 +175,9 @@ footer{font-size:11px;color:#8a99ae;border-top:1px solid #e0e8f2;padding-top:19p
  .period-metrics strong{font-size:23px}
  .chart-box{height:265px}
  .profile-chart-box{height:250px}
+ .heatmap-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;max-width:none}
+ .heatmap-filters button{min-width:0;padding:9px 6px}
+ .heatmap-filters button:last-child{grid-column:span 2}
  .heatmap-legend{gap:6px}
  .scope-pill{align-self:flex-start}
 }
