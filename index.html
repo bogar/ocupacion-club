@@ -11,7 +11,8 @@
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/day-filter.js" defer></script>
   <script src="assets/desglose-model.js?v=20261121-pistas" defer></script>
-  <script src="assets/app.js?v=20261121-pistas" defer></script>
+  <script src="assets/prevision-model.js?v=20261123-2h" defer></script>
+  <script src="assets/app.js?v=20261123-2h" defer></script>
   <script src="assets/insights.js" defer></script>
   <script src="assets/rooms.js" defer></script>
 </head>
@@ -128,6 +129,7 @@
       <div class="breakdown-toolbar" role="group" aria-label="Visualización de la ocupación">
         <button type="button" id="breakdownToggle" class="breakdown-toggle" aria-pressed="false">Ver desglose apilado</button>
         <span id="breakdownInfo" class="breakdown-description" aria-live="polite">Las categorías se mostrarán cuando haya estimaciones validadas.</span>
+        <span id="forecastInfo" class="forecast-description" aria-live="polite" hidden></span>
       </div>
       <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Evolución de las lecturas o de las medias de ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
       <div class="footline"><span id="chartCaption">Horas locales de España peninsular</span><span id="chartCount">Sin lecturas</span></div>
