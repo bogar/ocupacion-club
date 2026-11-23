@@ -8,8 +8,8 @@
     "fronton": 0
   },
   "metric": "future_reservation_equivalents",
-  "generated_at": "2026-11-23T15:35:02.593Z",
-  "valid_until": "2026-11-23T16:00:02.593Z",
+  "generated_at": "2026-11-23T15:38:01.810Z",
+  "valid_until": "2026-11-23T16:03:01.810Z",
   "horizon_minutes": 120,
   "points": [
     {
