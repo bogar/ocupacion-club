@@ -515,9 +515,15 @@ function trend(){
    responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
    interaction:{mode:'index',intersect:false},
    plugins:{
-    legend:{display:aggregate||stacked||futureShown>0,position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11}}},
+    legend:{display:aggregate||stacked||futureShown>0,position:'bottom',labels:{
+     usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11},
+     // En móvil evitar cuatro entradas duplicadas: color heredado + trazo discontinuo.
+     filter:item=>!stacked||!item.text.endsWith(' (previsión)')
+    }},
     tooltip:{callbacks:{
-     title:items=>items[0]?.raw?.label||'',
+     title:items=>items[0]?.raw?.label||
+      (items[0]?.raw?.forecast?timeFormat.format(new Date(items[0].raw.x)):''),
+
      label:item=>item.dataset.label+': '+number(item.parsed.y)+
        (item.dataset.forecast?' personas equivalentes previstas (reservas, no asistencia)':
         stacked&&item.dataset.stack==='componentes'?' personas equivalentes estimadas':' personas medidas'),
