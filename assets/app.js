@@ -109,6 +109,48 @@ let monthLoading=false,monthError=null,dayLoading=false,dayError=null,dayRequest
 
 let breakdownEnabled=false,breakdownPoints=[],breakdownLoaded=false,breakdownLoading=false;
 let breakdownCheckedAt=null,breakdownFailed=false;
+const breakdownArchiveMonths=new Set(),breakdownArchiveData=new Map();
+const breakdownArchiveLoading=new Set(),breakdownArchiveFailed=new Set();
+let breakdownArchiveIndexAt=0,breakdownArchiveIndexPromise=null;
+function selectedBreakdownMonth(){
+ return selectedMonth||(selectedDay?selectedDay.slice(0,7):null);
+}
+async function loadBreakdownArchive(){
+ const month=selectedBreakdownMonth();
+ if(!breakdownEnabled||!month||!window.OcupacionDesgloseArchivo)return;
+ // El índice es opcional hasta que se active el archivado.
+ if(Date.now()-breakdownArchiveIndexAt>300000){
+  if(!breakdownArchiveIndexPromise){
+   breakdownArchiveIndexPromise=(async()=>{
+    const doc=await dataFetch('data/desglose-archivo/index.json','json');
+    const months=window.OcupacionDesgloseArchivo.parseIndex(doc);
+    if(!months)throw Error('Índice de desglose inválido');
+    breakdownArchiveMonths.clear();
+    for(const item of months)breakdownArchiveMonths.add(item);
+   })().catch(()=>{}).finally(()=>{
+    breakdownArchiveIndexAt=Date.now();
+    breakdownArchiveIndexPromise=null;
+   });
+  }
+  await breakdownArchiveIndexPromise;
+ }
+ if(!breakdownArchiveMonths.has(month)||breakdownArchiveData.has(month)||
+    breakdownArchiveLoading.has(month))return;
+ breakdownArchiveLoading.add(month);
+ try{
+  const doc=await dataFetch('data/desglose-archivo/'+month+'.json','json');
+  const points=window.OcupacionDesgloseArchivo.parseMonth(
+   doc,month,window.OcupacionDesglose);
+  if(!points)throw Error('Mes de desglose inválido');
+  breakdownArchiveData.set(month,points);
+  breakdownArchiveFailed.delete(month);
+ }catch{
+  breakdownArchiveFailed.add(month);
+ }finally{
+  breakdownArchiveLoading.delete(month);
+  if(selectedBreakdownMonth()===month&&!quickMode)renderAnalytics();
+ }
+}
 function breakdownInfo(message){
  if(breakdownFailed)return message+' · No se pudo comprobar si hay nuevos datos.';
  return message+(breakdownCheckedAt?
@@ -166,6 +208,13 @@ async function loadBreakdownRecent(){
  }
 }
 function effectiveBreakdown(){
+ const month=selectedBreakdownMonth();
+ if(month&&breakdownArchiveMonths.has(month)){
+  // Nunca inferir un mes completo a partir del solapamiento reciente.
+  if(!breakdownArchiveData.has(month))return [];
+  return window.OcupacionDesgloseArchivo.combine(
+   breakdownPoints,breakdownArchiveData.get(month));
+ }
  if(selectedDay||selectedMonth||period!==1||
     !breakdownRecentPoints.length||Date.now()>breakdownRecentExpiry)
   return breakdownPoints;
@@ -205,6 +254,7 @@ if(breakdownButton)breakdownButton.addEventListener('click',()=>{
   loadBreakdown();
   loadBreakdownRecent();
   loadForecast();
+  loadBreakdownArchive();
  }else {
   $('breakdownInfo').textContent='Solo ocupación real, sin estimaciones.';
   renderAnalytics();
@@ -490,7 +540,13 @@ function trend(){
   }else $('breakdownInfo').textContent=breakdownInfo('No hay estimaciones coincidentes con este periodo. Se muestra el total real.');
  }else if(breakdownEnabled){
   $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
-    breakdownInfo('Desglose sin estimaciones validadas. Se muestra el total real.');
+    breakdownInfo(selectedBreakdownMonth()&&
+     breakdownArchiveMonths.has(selectedBreakdownMonth())&&
+     !breakdownArchiveData.has(selectedBreakdownMonth())?
+     (breakdownArchiveFailed.has(selectedBreakdownMonth())?
+       'No se pudo consultar el desglose mensual. Se muestra el total real.':
+       'Consultando desglose mensual. Se muestra el total real.'):
+     'Desglose sin estimaciones validadas. Se muestra el total real.');
  }
  // El futuro se superpone, nunca apila ni prolonga el total medido.
  const futureEnabled=breakdownEnabled&&!selectedDay&&!selectedMonth&&period===1;
@@ -851,6 +907,7 @@ async function selectDay(day){
  monthLoading=false;monthError=null;dayError=null;
  dayLoading=!!selectedDay;
  updatePeriodButtons();updateMonthOptions();renderAnalytics();
+ if(breakdownEnabled)loadBreakdownArchive();
  if(!selectedDay)return;
  const chosen=selectedDay;
  const month=chosen.slice(0,7);
@@ -881,6 +938,7 @@ async function selectMonth(month){
  selectedMonth=month||null;
  monthLoading=false;monthError=null;
  updatePeriodButtons();updateMonthOptions();
+ if(breakdownEnabled)loadBreakdownArchive();
  if(!selectedMonth){renderAnalytics();return;}
  if(!archiveMonths.has(month)||archiveData.has(month)){renderAnalytics();return;}
  monthLoading=true;renderAnalytics();
@@ -1028,12 +1086,12 @@ setInterval(()=>{if(!quickMode)loadArchiveIndex();},300000);
 // Reconsultar solo mientras se visualiza el desglose, sin refrescar la página.
 setInterval(()=>{
  if(!quickMode&&breakdownEnabled&&document.visibilityState==='visible'){
-  loadBreakdown();loadBreakdownRecent();loadForecast();
+  loadBreakdown();loadBreakdownRecent();loadForecast();loadBreakdownArchive();
  }
 },120000);
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='visible'&&breakdownEnabled&&!quickMode){
-  loadBreakdown();loadForecast();
+  loadBreakdown();loadForecast();loadBreakdownArchive();
  }
 });
 })();
