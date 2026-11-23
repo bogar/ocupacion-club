@@ -26,3 +26,11 @@ test('no se proyecta el total del club ni se apila la previsión con mediciones'
  assert.match(section,/availability|disponibilidad/);
  assert.match(code,/forecast:'?true'?/);
 });
+
+test('solo Hoy mezcla el desglose reciente con el histórico y respeta caducidad',()=>{
+ assert.match(code,/data\/desglose-reciente\.json/);
+ assert.match(code,/function effectiveBreakdown\(\)/);
+ assert.match(code,/Date\.now\(\)>breakdownRecentExpiry/);
+ assert.match(code,/for\(const point of breakdownRecentPoints\)byTime\.set\(point\.ms,point\)/);
+ assert.match(code,/const layered=window\.OcupacionDesglose\.build\(summary,rows,granularity,effectivePoints,info\)/);
+});
