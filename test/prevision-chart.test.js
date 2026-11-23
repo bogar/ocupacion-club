@@ -17,6 +17,7 @@ test('solo se dibuja futuro en el desglose de Hoy',()=>{
  assert.match(code,/borderDash:\[5,5\]/);
  assert.match(code,/stack:'prevision-'/);
  assert.match(code,/spanGaps:false/);
+ assert.match(code,/interaction:futureShown\?\{mode:'nearest',axis:'x',intersect:false\}/);
 });
 test('no se proyecta el total del club ni se apila la previsión con mediciones',()=>{
  const section=code.slice(code.indexOf('const futureEnabled='),code.indexOf(" $('trendChart').hidden=false;"));
