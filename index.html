@@ -10,9 +10,10 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/day-filter.js" defer></script>
+  <script src="assets/heatmap-model.js?v=20261123" defer></script>
   <script src="assets/desglose-model.js?v=20261123-puente" defer></script>
   <script src="assets/prevision-model.js?v=20261123-actual" defer></script>
-  <script src="assets/app.js?v=20261123-actual" defer></script>
+  <script src="assets/app.js?v=20261123-actual-heatmap" defer></script>
   <script src="assets/insights.js" defer></script>
   <script src="assets/rooms.js" defer></script>
 </head>
@@ -155,8 +156,15 @@
 
     <section class="panel section-panel" aria-labelledby="heatmapTitle">
       <div class="section-header">
-        <div><div class="eyebrow muted">De un vistazo</div><h2 id="heatmapTitle">Mapa de calor semanal</h2><p class="section-subtitle">Media por día de la semana y hora. Los huecos representan ausencia de lecturas.</p></div>
+        <div><div class="eyebrow muted">De un vistazo</div><h2 id="heatmapTitle">Mapa de calor semanal</h2><p class="section-subtitle" id="heatmapSubtitle">Media por día de la semana y hora. Los huecos representan ausencia de lecturas.</p></div>
         <div class="heatmap-legend" aria-label="Escala de ocupación relativa"><span>Menos gente</span><div class="legend-blocks"><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i></div><span>Más gente</span></div>
+      </div>
+      <div class="heatmap-filters" role="group" aria-label="Periodo del mapa de calor">
+        <button type="button" data-heatmap-period="habitual" class="selected" aria-pressed="true" aria-controls="heatmap">Habitual</button>
+        <button type="button" data-heatmap-period="hoy" aria-pressed="false" aria-controls="heatmap">Hoy</button>
+        <button type="button" data-heatmap-period="ayer" aria-pressed="false" aria-controls="heatmap">Ayer</button>
+        <button type="button" data-heatmap-period="siete" aria-pressed="false" aria-controls="heatmap">7 días</button>
+        <button type="button" id="heatmapOtherDay" data-heatmap-period="semanas" aria-pressed="false" aria-controls="heatmap">Otros lunes</button>
       </div>
       <div class="heatmap-scroll"><div id="heatmap" class="heatmap" role="table" aria-label="Ocupación media por día y hora"></div></div>
       <div class="footline"><span id="heatmapCaption">Se irá completando cuando haya más registros.</span><span>Horas: 06:00 a 23:00 · Escala relativa</span></div>

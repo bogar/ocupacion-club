@@ -35,6 +35,8 @@ const shortDate = new Intl.DateTimeFormat('es-ES',{timeZone:zone,day:'2-digit',m
 const hourFormat = new Intl.DateTimeFormat('es-ES',{timeZone:zone,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 const localParts = new Intl.DateTimeFormat('en-GB',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',hourCycle:'h23'});
 const monthLabelFormat = new Intl.DateTimeFormat('es-ES',{timeZone:'UTC',month:'long',year:'numeric'});
+const heatmapShortDate = new Intl.DateTimeFormat('es-ES',{timeZone:'UTC',day:'numeric',month:'short'});
+const heatmapFullDate = new Intl.DateTimeFormat('es-ES',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
 const infoCache=new WeakMap();
 function info(date){
@@ -69,6 +71,7 @@ function parse(csv){
 }
 const archiveMonths=new Set(), archiveData=new Map();
 let data=[], latestSnapshot=null, readingStatus=null, selectedMonth=null, selectedDay=null, period=1;
+let heatmapPeriod='habitual';
 let recentRows=[],liveRows=[],recentSignature=null,liveSignature=null;
 let historyLoaded=false,historyInFlight=null,liveInFlight=null;
 let quickMode=false,initializing=true;
@@ -688,7 +691,7 @@ function profile(rows){
   }
  });
 }
-function heat(grid){
+function heat(grid,labels,caption){
  const values=grid.flat().filter(slot=>slot.mean!==null).map(slot=>slot.mean);
  const low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):0;
  const target=$('heatmap');target.replaceChildren();
@@ -699,19 +702,66 @@ function heat(grid){
  }
  cell('Día','heat-header heat-day');
  for(let hour=6;hour<=23;hour++)cell(String(hour).padStart(2,'0'),'heat-header');
- for(let d=0;d<7;d++){
-  cell(names[d].slice(0,3),'heat-day');
+ for(let d=0;d<labels.length;d++){
+  cell(labels[d].short,'heat-day',labels[d].full);
   for(let h=0;h<18;h++){
    const slot=grid[d][h];
    const level=slot.mean===null?0:low===high?3:Math.min(5,1+Math.floor((slot.mean-low)/(high-low)*4.999));
-   const detail=slot.mean===null?'Sin lecturas':number(Math.round(slot.mean))+' personas de media, '+slot.days+' días';
+   const daysLabel=slot.days===1?'1 día':slot.days+' días';
+   const detail=slot.mean===null?'Sin lecturas':number(Math.round(slot.mean))+' personas de media, '+daysLabel;
    cell(slot.mean===null?'·':number(Math.round(slot.mean)),'heat-cell heat-'+level,
-    names[d]+' '+String(h+6).padStart(2,'0')+':00 · '+detail);
+    labels[d].full+' '+String(h+6).padStart(2,'0')+':00 · '+detail);
   }
  }
  $('heatmapCaption').textContent=values.length
-  ? (selectedMonth?'Medias del mes '+monthLabel(selectedMonth):'Patrón calculado con los últimos 30 días')+'. Colores relativos a este periodo.'
-  : 'Sin datos suficientes para este periodo.';
+  ? caption+'. '+values.length+' de '+(grid.length*18)+' franjas con lecturas. Colores relativos a esta vista.'
+  : caption+'. No hay lecturas para estas franjas.';
+}
+function renderHeatmap(){
+ const today=info(new Date()),key=today.day,mode=heatmapPeriod;
+ const plural=['lunes','martes','miércoles','jueves','viernes','sábados','domingos'];
+ $('heatmapOtherDay').textContent='Otros '+plural[today.weekday];
+ document.querySelectorAll('[data-heatmap-period]').forEach(button=>{
+  const active=button.dataset.heatmapPeriod===mode;
+  button.classList.toggle('selected',active);
+  button.setAttribute('aria-pressed',String(active));
+ });
+ const single=mode==='hoy'||mode==='ayer'||mode==='semanas';
+ $('heatmapTitle').textContent=single?'Mapa de calor por horas':'Mapa de calor semanal';
+ let grid,labels,caption,subtitle;
+ if(mode==='habitual'){
+  grid=hourlyBuckets(patternRows());
+  labels=names.map(name=>({short:name.slice(0,3),full:name}));
+  subtitle='Media por día de la semana y hora. Los huecos representan ausencia de lecturas.';
+  caption=selectedMonth?'Medias del mes '+monthLabel(selectedMonth):
+   'Patrón calculado con los últimos 30 días';
+ }else if(mode==='semanas'){
+  const comparable=window.OcupacionHeatmap.comparableRows(data,today,info);
+  grid=[hourlyBuckets(comparable)[today.weekday]];
+  labels=[{short:names[today.weekday].slice(0,3),full:names[today.weekday]+' de otras semanas'}];
+  subtitle='Mismo día de la semana en las últimas 8 semanas, sin contar hoy.';
+  caption='Media de otros '+plural[today.weekday]+' durante las últimas 8 semanas';
+ }else{
+  const keys=window.OcupacionHeatmap.dates(mode,key);
+  grid=window.OcupacionHeatmap.dailyBuckets(data,keys,info);
+  labels=keys.map(day=>{
+   const date=new Date(day+'T12:00:00Z');
+   return {short:names[window.OcupacionHeatmap.weekday(day)].slice(0,3)+' '+date.getUTCDate(),
+    full:heatmapFullDate.format(date)};
+  });
+  if(mode==='siete'){
+   subtitle='Últimos 7 días naturales, del más antiguo a hoy. Hoy puede estar incompleto.';
+   caption='Lecturas del '+heatmapShortDate.format(new Date(keys[0]+'T12:00:00Z'))+
+    ' al '+heatmapShortDate.format(new Date(keys[6]+'T12:00:00Z'));
+  }else{
+   subtitle=mode==='hoy'?'Lecturas de hoy, hora a hora. El día aún puede estar incompleto.':
+    'Lecturas de ayer, hora a hora.';
+   caption='Lecturas de '+heatmapFullDate.format(new Date(keys[0]+'T12:00:00Z'));
+  }
+ }
+ $('heatmapSubtitle').textContent=subtitle;
+ $('heatmap').setAttribute('aria-label',subtitle);
+ heat(grid,labels,caption);
 }
 function recommendations(grid){
  $('recommendationsScope').textContent=selectedMonth?monthLabel(selectedMonth):'Últimos 30 días';
@@ -750,10 +800,9 @@ function renderAnalytics(){
  const rows=selectionRows();
  trend();
  const pattern=patternRows();
- const grid=hourlyBuckets(pattern);
  profile(pattern);
- heat(grid);
- recommendations(grid);
+ renderHeatmap();
+ recommendations(hourlyBuckets(pattern));
 }
 function updateDayControls(){
  const input=$('daySelect');
@@ -825,6 +874,8 @@ async function selectDay(day){
  }
 }
 async function selectMonth(month){
+ // La selección mensual histórica sigue teniendo prioridad sobre filtros puntuales.
+ heatmapPeriod='habitual';
  ++dayRequest;
  selectedDay=null;dayLoading=false;dayError=null;
  selectedMonth=month||null;
@@ -843,6 +894,10 @@ async function selectMonth(month){
   if(selectedMonth===month){monthLoading=false;renderAnalytics();}
  }
 }
+document.querySelectorAll('[data-heatmap-period]').forEach(button=>button.addEventListener('click',()=>{
+ heatmapPeriod=button.dataset.heatmapPeriod;
+ renderHeatmap();
+}));
 document.querySelectorAll('[data-days]').forEach(button=>button.addEventListener('click',()=>{
  ++dayRequest;
  period=Number(button.dataset.days);
