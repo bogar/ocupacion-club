@@ -89,3 +89,24 @@ test('la serie pública real de 15 minutos se alinea con muestras de 5 minutos',
  assert.deepEqual(result.series.tennis.map(p=>p.y),[null,null,null]);
  assert.deepEqual(result.series.unattributed.map(p=>p.y),[85,85,85]);
 });
+
+test('desglose reciente solo admite el pasado de tres horas y caduca',()=>{
+ const now=Date.parse('2026-11-23T14:00:00.000Z');
+ const doc={
+  version:2,metric:'recent_category_estimates',
+  generated_at:'2026-11-23T13:55:00.000Z',
+  valid_until:'2026-11-23T14:20:00.000Z',
+  points:[mk('2026-11-23T13:37:30.000Z',
+    {directed:null,tennis:9,squash:null,fronton:0})]
+ };
+ const parsed=model.parseRecent(doc,now);
+ assert.equal(parsed.points[0].tennis,9);
+ assert.equal(parsed.points[0].fronton,0);
+ assert.equal(model.parseRecent(doc,Date.parse('2026-11-23T14:21:00.000Z')),null);
+ const past={...doc,points:[mk('2026-11-23T10:37:30.000Z',{tennis:9})]};
+ assert.equal(model.parseRecent(past,now),null);
+ const future={...doc,points:[mk('2026-11-23T14:07:30.000Z',{tennis:9})]};
+ assert.equal(model.parseRecent(future,now),null);
+ const privateField={...doc,points:[{...doc.points[0],name:'private'}]};
+ assert.equal(model.parseRecent(privateField,now),null);
+});
