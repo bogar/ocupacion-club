@@ -50,3 +50,39 @@ test('rechaza marcas repetidas, documento con caducidad larga o versión distint
  d=valid();d.version=2;
  assert.equal(model.parse(d),null);
 });
+
+test('v2 incluye franja en curso y desaparece al cambiar el cuarto de hora',()=>{
+ const doc={...valid(),version:2,current:
+  point('2026-11-23T13:52:30.000Z',{directed:20,tennis:9,fronton:0})
+ };
+ const parsed=model.parse(doc);
+ assert.ok(parsed);
+ const active=model.ongoing(parsed,Date.parse('2026-11-23T13:55:00.000Z'));
+ assert.equal(active.start,Date.parse('2026-11-23T13:45:00.000Z'));
+ assert.equal(active.values.tennis,9);
+ assert.equal(active.values.squash,null);
+ assert.equal(model.ongoing(parsed,Date.parse('2026-11-23T14:01:00.000Z')),null);
+ assert.equal(model.ongoing(parsed,Date.parse('2026-11-23T14:16:00.000Z')),null);
+});
+test('v2 rechaza datos privados, valores imposibles y centro de franja incorrecto',()=>{
+ const doc={...valid(),version:2,current:
+  point('2026-11-23T13:52:30.000Z',{directed:20,tennis:9})};
+ for(const key of ['name','room','session_id']){
+  const copy={...doc,current:{...doc.current,[key]:'privado'}};
+  assert.equal(model.parse(copy),null);
+ }
+ const wrong={...doc,current:{...doc.current,timestamp:'2026-11-23T14:07:30.000Z'}};
+ assert.equal(model.parse(wrong),null);
+ const impossible={...doc,current:{...doc.current,tennis:4}};
+ assert.equal(model.parse(impossible),null);
+ const empty={...doc,current:null};
+ assert.equal(model.parse(empty).current,null);
+});
+
+test('una franja ya empezada nunca se muestra como previsión futura',()=>{
+ const doc=model.parse(valid());
+ const now=Date.parse('2026-11-23T14:05:00.000Z');
+ const upcoming=model.active(doc,now);
+ assert.deepEqual(upcoming.map(p=>new Date(p.ms).toISOString()),
+  ['2026-11-23T14:22:30.000Z']);
+});
