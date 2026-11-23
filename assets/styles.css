@@ -268,3 +268,43 @@ body.quick-mode .method-note{display:none}
 /* La previsión nunca altera la línea del aforo medido. */
 .forecast-description{font-size:12px;line-height:1.45;color:#526a85;flex-basis:100%;margin-top:2px}
 .forecast-description[hidden]{display:none}
+
+
+/* Zoom temporal de reservas y pistas, sin ampliar la escala del aforo real. */
+.forecast-timeline{margin:14px 0 4px;padding:16px 18px 14px;
+ background:#f8fbff;border:1px solid #e2ebf6;border-radius:14px}
+.forecast-timeline[hidden]{display:none}
+.forecast-timeline-heading{display:flex;align-items:baseline;justify-content:space-between;
+ gap:8px 22px;flex-wrap:wrap;margin-bottom:16px}
+.forecast-timeline-heading strong{color:#294766;font-size:14px}
+.forecast-timeline-heading span{color:#6e819a;font-size:11px;line-height:1.45}
+.forecast-timeline-axis{height:20px;position:relative;margin:0 3px 3px 126px}
+.forecast-timeline-tick{position:absolute;top:0;transform:translateX(-50%);
+ white-space:nowrap;font-size:10px;color:#8495ac;font-variant-numeric:tabular-nums}
+.forecast-timeline-tick.first{transform:none}
+.forecast-timeline-tick.last{transform:translateX(-100%)}
+.forecast-timeline-rows{display:flex;flex-direction:column;gap:9px}
+.forecast-timeline-row{display:grid;grid-template-columns:120px minmax(0,1fr);
+ gap:9px;align-items:center}
+.forecast-timeline-name{font-size:11px;font-weight:700;color:#47617d}
+.forecast-timeline-track{min-width:0;position:relative;height:25px;border-radius:6px;
+ background:repeating-linear-gradient(to right,#eef3f9 0px,#eef3f9 1px,transparent 1px,transparent 25%),#f1f5fb;
+ overflow:hidden}
+.forecast-timeline-band{position:absolute;top:2px;height:21px;border-radius:4px;
+ background:var(--band-color);color:white;display:flex;align-items:center;justify-content:center;
+ font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;
+ box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.forecast-timeline-band.is-current{opacity:.72}
+.forecast-timeline-band.is-zero{background:transparent;border:2px dashed var(--band-color);
+ box-shadow:none;color:#4d6179}
+.forecast-timeline-unknown{position:absolute;inset:0;display:flex;align-items:center;
+ justify-content:center;color:#9aaabd;font-size:10px;font-style:italic}
+.forecast-timeline-footnote{font-size:10px;color:#7287a0;line-height:1.5;margin:12px 0 0}
+@media(max-width:620px){
+ .forecast-timeline{padding:12px 10px}
+ .forecast-timeline-axis{margin-left:87px}
+ .forecast-timeline-row{grid-template-columns:80px minmax(0,1fr);gap:7px}
+ .forecast-timeline-name{font-size:10px;line-height:1.1}
+ .forecast-timeline-tick{font-size:9px}
+ .forecast-timeline-tick:nth-child(2n){display:none}
+}

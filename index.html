@@ -134,6 +134,15 @@
         <span id="forecastInfo" class="forecast-description" aria-live="polite" hidden></span>
       </div>
       <div class="chart-box"><canvas id="trendChart" role="img" aria-label="Evolución de las lecturas o de las medias de ocupación"></canvas><div class="chart-empty" id="chartEmpty" hidden></div></div>
+      <div class="forecast-timeline" id="forecastTimeline" hidden aria-label="Detalle ampliado de las próximas dos horas">
+        <div class="forecast-timeline-heading">
+          <strong>Ahora y próximas 2 horas</strong>
+          <span id="forecastTimelineNote">Franjas estimadas, nunca asistencia confirmada.</span>
+        </div>
+        <div class="forecast-timeline-axis" id="forecastTimelineAxis" aria-hidden="true"></div>
+        <div id="forecastTimelineRows" class="forecast-timeline-rows"></div>
+        <p class="forecast-timeline-footnote">Dirigidas: reservas validadas. Pistas: equivalentes hipotéticos por no disponibilidad. Las franjas no representan entradas reales.</p>
+      </div>
       <div class="footline"><span id="chartCaption">Horas locales de España peninsular</span><span id="chartCount">Sin lecturas</span></div>
     </section>
 

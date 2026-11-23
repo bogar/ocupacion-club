@@ -71,11 +71,50 @@
   return doc.points.filter(p=>p.ms-STEP/2>now&&p.ms<=now+HORIZON);
  }
  function ongoing(doc,now=Date.now()){
-  if(!doc||!Number.isFinite(now)||now<doc.generated-60000||now>doc.until||
-    !doc.current)return null;
+  if(!doc||!Number.isFinite(now)||now<doc.generated-60000||now>doc.until)return null;
   const start=Math.floor(now/STEP)*STEP;
-  if(doc.current.ms!==start+STEP/2)return null;
-  return {start,now,values:doc.current};
+  const values=Object.fromEntries(fields.map(key=>[key,null]));
+  // El campo current solo acredita la franja que coincide con esta hora.
+  if(doc.current?.ms===start+STEP/2){
+   for(const key of fields)values[key]=doc.current[key];
+  }
+  // Una previsión capturada ANTES de empezar la franja también puede seguir
+  // describiendo la franja una vez iniciada. Nunca usar una captura posterior
+  // para reinterpretar un cuarto de hora anterior.
+  if(doc.generated<=start){
+   const anticipated=doc.points.find(point=>point.ms===start+STEP/2);
+   if(anticipated)for(const key of fields){
+    if(values[key]===null)values[key]=anticipated[key];
+   }
+  }
+  return fields.some(key=>values[key]!==null)?{start,now,values}:null;
+ }
+ function intervals(doc,now=Date.now()){
+  // Intervalos agregados sin completar huecos. Cada dato ocupa los 15 minutos
+  // de su franja, no un punto artificial en su centro.
+  const projected=active(doc,now),current=ongoing(doc,now);
+  const result=Object.fromEntries(fields.map(key=>[key,[]]));
+  const horizon=now+HORIZON;
+  for(const key of fields){
+   const fragments=[];
+   if(current?.values[key]!==undefined&&current?.values[key]!==null){
+    fragments.push({start:now,end:Math.min(current.start+STEP,horizon),
+      value:current.values[key],phase:'current'});
+   }
+   for(const p of projected){
+    if(p[key]===null)continue;
+    const start=Math.max(now,p.ms-STEP/2),end=Math.min(horizon,p.ms+STEP/2);
+    if(start<end)fragments.push({start,end,value:p[key],phase:'future'});
+   }
+   for(const segment of fragments){
+    if(segment.start>=segment.end)continue;
+    const last=result[key].at(-1);
+    if(last&&last.end===segment.start&&last.value===segment.value&&
+       last.phase===segment.phase)last.end=segment.end;
+    else result[key].push(segment);
+   }
+  }
+  return result;
  }
  function series(doc,now=Date.now()){
   const points=active(doc,now);
@@ -83,5 +122,5 @@
    points.map(p=>({x:p.ms,y:p[key],forecast:true}))
   ]));
  }
- return {parse,active,series,ongoing,fields};
+ return {parse,active,series,ongoing,intervals,fields};
 });

@@ -465,7 +465,72 @@ function emptyChart(canvasId,emptyId,message){
  $(emptyId).textContent=message;
 }
 function destroyChart(chart){if(chart)chart.destroy();}
+// Vista de detalle a escala propia: no comprime 60 reservas bajo los 500
+// asistentes reales y no rellena intervalos de 15 min desconocidos.
+function renderForecastTimeline(enabled,doc,now,styles){
+ const panel=$('forecastTimeline');
+ if(!panel)return;
+ panel.hidden=!enabled;
+ if(!enabled)return;
+ const tracks=$('forecastTimelineRows'),axis=$('forecastTimelineAxis');
+ const note=$('forecastTimelineNote');
+ tracks.replaceChildren();
+ axis.replaceChildren();
+ const limit=now+120*60000;
+ const fmt=new Intl.DateTimeFormat('es-ES',{timeZone:zone,hour:'2-digit',minute:'2-digit'});
+ for(let offset=0;offset<=120;offset+=30){
+  const tick=document.createElement('span');
+  tick.className='forecast-timeline-tick'+(offset===0?' first':offset===120?' last':'');
+  tick.style.left=(offset/120*100)+'%';
+  tick.textContent=offset===0?'Ahora · '+fmt.format(new Date(now)):
+   fmt.format(new Date(now+offset*60000));
+  axis.appendChild(tick);
+ }
+ const spans=window.OcupacionPrevision?.intervals(doc,now)||{};
+ let shown=0,knownCurrent=0;
+ for(const [key,label,color] of styles){
+  const row=document.createElement('div');
+  row.className='forecast-timeline-row';
+  const name=document.createElement('span');
+  name.className='forecast-timeline-name';name.textContent=label;
+  const track=document.createElement('div');
+  track.className='forecast-timeline-track';
+  track.setAttribute('aria-label',label+' · próximas dos horas');
+  const intervals=spans[key]||[];
+  for(const part of intervals){
+   const left=Math.max(now,part.start),right=Math.min(limit,part.end);
+   if(left>=right)continue;
+   shown++;
+   if(part.phase==='current')knownCurrent++;
+   const band=document.createElement('span');
+   band.className='forecast-timeline-band'+
+    (part.phase==='current'?' is-current':'')+
+    (part.value===0?' is-zero':'');
+   band.style.left=((left-now)/(limit-now)*100)+'%';
+   band.style.width=((right-left)/(limit-now)*100)+'%';
+   band.style.setProperty('--band-color',color);
+   const descriptor=part.value===0?'0 verificado':part.value+' personas equivalentes';
+   const timing=fmt.format(new Date(left))+' a '+fmt.format(new Date(right));
+   band.title=label+': '+descriptor+' · '+timing;
+   band.setAttribute('aria-label',band.title);
+   if(part.value>0&&(right-left)>=14*60000)band.textContent=String(part.value);
+   track.appendChild(band);
+  }
+  if(!intervals.length){
+   const empty=document.createElement('span');
+   empty.className='forecast-timeline-unknown';
+   empty.textContent='Sin datos verificables';
+   track.appendChild(empty);
+  }
+  row.append(name,track);tracks.appendChild(row);
+ }
+ note.textContent=shown?
+  'Franjas de 15 min verificadas, agrupadas cuando son contiguas. Vacío significa desconocido, no cero.':
+  forecastLoading?'Comprobando reservas próximas…':
+  'Sin franjas verificables para este momento.';
+}
 function trend(){
+ $('forecastTimeline').hidden=true;
  destroyChart(trendChart);trendChart=null;
  const rows=selectionRows();
  renderPeriodMetrics(rows);
@@ -551,8 +616,6 @@ function trend(){
  // El futuro se superpone, nunca apila ni prolonga el total medido.
  const futureEnabled=breakdownEnabled&&!selectedDay&&!selectedMonth&&period===1;
  const nowMs=Date.now();
- const future=(futureEnabled&&window.OcupacionPrevision)?
-  window.OcupacionPrevision.series(forecastDoc,nowMs):null;
  const ongoing=(futureEnabled&&window.OcupacionPrevision)?
   window.OcupacionPrevision.ongoing(forecastDoc,nowMs):null;
  const futureStyles=[
@@ -581,33 +644,35 @@ function trend(){
   }
  }
  let futureShown=0;
- if(future){
+ const intervals=(futureEnabled&&window.OcupacionPrevision)?
+  window.OcupacionPrevision.intervals(forecastDoc,nowMs):null;
+ if(intervals){
   for(const [key,label,color] of futureStyles){
-   const points=[...(future[key]||[])];
-   if(!points.some(p=>p.y!==null))continue;
-   // Prolongamos hasta la previsión solo si hay dos estimaciones válidas
-   // consecutivas, sin unir períodos desconocidos ni proyectar aforo real.
-   if(ongoing&&ongoing.values[key]!==null&&
-      points[0]?.y!==null&&points[0].x-ongoing.now<=30*60000){
-    points.unshift({x:ongoing.now,y:ongoing.values[key],forecast:true,bridge:true});
-   }
+   const spans=(intervals[key]||[]).filter(part=>part.phase==='future');
+   if(!spans.length)continue;
    futureShown++;
-   series.push({
-    label:label+' (previsión)',data:points,parsing:false,
-    stack:'prevision-'+key,forecast:true,
-    borderColor:color,backgroundColor:'transparent',
-    borderDash:[5,5],borderWidth:2.2,
-    pointRadius:p=>p.raw?.bridge?0:2,
-    pointHoverRadius:5,fill:false,tension:0,spanGaps:false
-   });
+   // Segmentos horizontales representan el intervalo COMPLETO conocido;
+   // tramos desconocidos no quedan unidos por una línea imaginaria.
+   for(const segment of spans){
+    series.push({
+     label:label+' (previsión)',
+     data:[{x:segment.start,y:segment.value,forecast:true},
+           {x:segment.end,y:segment.value,forecast:true}],
+     parsing:false,stack:'prevision-'+key,forecast:true,
+     borderColor:color,backgroundColor:'transparent',
+     borderDash:[5,5],borderWidth:2.8,
+     pointRadius:0,pointHoverRadius:5,fill:false,tension:0,spanGaps:false
+    });
+   }
   }
  }
+ renderForecastTimeline(futureEnabled,forecastDoc,nowMs,futureStyles);
  const futureInfo=$('forecastInfo');
  if(futureInfo){
   futureInfo.hidden=!futureEnabled;
   if(futureEnabled)futureInfo.textContent=(futureShown||ongoingShown)?
    (ongoingShown?'Franja en curso: línea continua sin puntos (estimación de reservas). ':'')+
-   (futureShown?'Próximas 2 h: líneas discontinuas. ':'')+
+   (futureShown?'Próximas 2 h: franjas horizontales discontinuas. ':'')+
    'Las pistas representan disponibilidad no reservable, no asistencia confirmada.':
    forecastLoading?'Comprobando previsión de las próximas 2 h…':
    forecastFailed?'Previsión no disponible; el histórico se mantiene sin cambios.':

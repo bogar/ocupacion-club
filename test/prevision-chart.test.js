@@ -43,3 +43,15 @@ test('franja actual es una línea continua sin puntos y se separa del total medi
  assert.match(code,/borderDash:\[5,5\]/);
  assert.match(code,/!futureShown&&!ongoingShown/);
 });
+
+test('las franjas próximas se muestran como intervalos completos en un zoom separado',()=>{
+ assert.match(html,/id="forecastTimeline"/);
+ assert.match(html,/id="forecastTimelineAxis"/);
+ assert.match(html,/id="forecastTimelineRows"/);
+ assert.match(code,/OcupacionPrevision\.intervals\(forecastDoc,nowMs\)/);
+ assert.match(code,/renderForecastTimeline\(futureEnabled,forecastDoc,nowMs,futureStyles\)/);
+ assert.match(code,/segment\.start,y:segment\.value/);
+ assert.match(code,/segment\.end,y:segment\.value/);
+ assert.match(code,/part\.phase==='current'/);
+ assert.match(code,/Sin datos verificables/);
+});
