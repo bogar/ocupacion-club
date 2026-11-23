@@ -256,3 +256,7 @@ body.quick-mode .method-note{display:none}
 .breakdown-toggle:focus-visible{outline:3px solid #9abfe7;outline-offset:2px}
 .breakdown-description{flex:1;min-width:230px;color:#7387a1;font-size:11px;line-height:1.5}
 @media(max-width:600px){.breakdown-toolbar{gap:8px}.breakdown-description{min-width:0;flex-basis:100%}}
+
+/* La previsión nunca altera la línea del aforo medido. */
+.forecast-description{font-size:12px;line-height:1.45;color:#526a85;flex-basis:100%;margin-top:2px}
+.forecast-description[hidden]{display:none}

@@ -9,7 +9,7 @@ const DATA_ROOT = 'https://raw.githubusercontent.com/bogar/ocupacion-club/main/'
 // from the repository without requiring a Pages deploy every five minutes.
 async function dataFetch(path,kind='text'){
  // No recurrimos a una copia antigua de Pages para el dato actual.
- const live=['data/latest.json','data/live.csv','data/reading-status.json','data/desglose.json'].includes(path);
+ const live=['data/latest.json','data/live.csv','data/reading-status.json','data/desglose.json','data/prevision.json'].includes(path);
  const candidates=live?[DATA_ROOT+path+'?t='+Date.now()]:
   [DATA_ROOT+path+'?t='+Date.now(),path+'?t='+Date.now()];
  let lastError;
@@ -143,6 +143,24 @@ async function loadBreakdown(){
   if(!quickMode)renderAnalytics();
  }
 }
+let forecastDoc=null,forecastLoading=false,forecastFailed=false;
+async function loadForecast(){
+ if(forecastLoading)return;
+ forecastLoading=true;
+ try{
+  const json=await dataFetch('data/prevision.json','json');
+  const doc=window.OcupacionPrevision?.parse(json);
+  if(!doc)throw Error('Previsión no validada.');
+  forecastDoc=doc;
+  forecastFailed=false;
+ }catch{
+  // La previsión es opcional: nunca bloquea ni sustituye al histórico.
+  forecastFailed=true;
+ }finally{
+  forecastLoading=false;
+  if(!quickMode)renderAnalytics();
+ }
+}
 const breakdownButton=$('breakdownToggle');
 if(breakdownButton)breakdownButton.addEventListener('click',()=>{
  breakdownEnabled=!breakdownEnabled;
@@ -154,6 +172,7 @@ if(breakdownButton)breakdownButton.addEventListener('click',()=>{
   // se comprueba si hay una versión más reciente.
   if(!quickMode)renderAnalytics();
   loadBreakdown();
+  loadForecast();
  }else {
   $('breakdownInfo').textContent='Solo ocupación real, sin estimaciones.';
   renderAnalytics();
@@ -437,23 +456,83 @@ function trend(){
   $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
     breakdownInfo('Desglose sin estimaciones validadas. Se muestra el total real.');
  }
+ // El futuro se superpone, nunca apila ni prolonga el total medido.
+ const futureEnabled=breakdownEnabled&&!selectedDay&&!selectedMonth&&period===1;
+ const nowMs=Date.now();
+ const future=(futureEnabled&&window.OcupacionPrevision)?
+  window.OcupacionPrevision.series(forecastDoc,nowMs):null;
+ const futureStyles=[
+  ['directed','Actividades dirigidas','#317ac2'],
+  ['tennis','Tenis','#c88b39'],
+  ['squash','Esquaix','#8f63ba'],
+  ['fronton','Frontón','#299786']
+ ];
+ let futureShown=0;
+ if(future){
+  for(const [key,label,color] of futureStyles){
+   const points=future[key]||[];
+   if(!points.some(p=>p.y!==null))continue;
+   futureShown++;
+   series.push({
+    label:label+' (previsión)',data:points,parsing:false,
+    stack:'prevision-'+key,forecast:true,
+    borderColor:color,backgroundColor:'transparent',
+    borderDash:[5,5],borderWidth:2.2,
+    pointRadius:2,pointHoverRadius:5,fill:false,tension:0,spanGaps:false
+   });
+  }
+ }
+ const futureInfo=$('forecastInfo');
+ if(futureInfo){
+  futureInfo.hidden=!futureEnabled;
+  if(futureEnabled)futureInfo.textContent=futureShown?
+   'Previsión de reservas para las próximas 2 h (líneas discontinuas). '+
+   'Las pistas representan disponibilidad no reservable, no asistencia confirmada.':
+   forecastLoading?'Comprobando previsión de las próximas 2 h…':
+   forecastFailed?'Previsión no disponible; el histórico se mantiene sin cambios.':
+   'Sin estimaciones futuras suficientemente recientes y verificadas.';
+ }
+ const nowLine={
+  id:'futureNowLine',
+  afterDraw(chart){
+   if(!futureShown)return;
+   const x=chart.scales.x.getPixelForValue(nowMs);
+   const {ctx,chartArea}=chart;
+   if(!Number.isFinite(x)||x<chartArea.left||x>chartArea.right)return;
+   ctx.save();
+   ctx.strokeStyle='#66758d';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+   ctx.beginPath();ctx.moveTo(x,chartArea.top);ctx.lineTo(x,chartArea.bottom);ctx.stroke();
+   ctx.setLineDash([]);ctx.fillStyle='#556783';
+   ctx.font='11px sans-serif';ctx.textAlign='left';
+   ctx.fillText('Ahora',Math.min(x+5,chartArea.right-34),chartArea.top+12);
+   ctx.restore();
+  }
+ };
  $('trendChart').hidden=false;$('chartEmpty').hidden=true;
  trendChart=new Chart($('trendChart'),{
-  type:'line',data:{datasets:series},
+  type:'line',data:{datasets:series},plugins:[nowLine],
   options:{
    responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
-   interaction:{mode:'index',intersect:false},
+   interaction:futureShown?{mode:'nearest',axis:'x',intersect:false}:
+    {mode:'index',intersect:false},
    plugins:{
-    legend:{display:aggregate||stacked,position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11}}},
+    legend:{display:aggregate||stacked||futureShown>0,position:'bottom',labels:{
+     usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11},
+     // En móvil evitar cuatro entradas duplicadas: color heredado + trazo discontinuo.
+     filter:item=>!stacked||!item.text.endsWith(' (previsión)')
+    }},
     tooltip:{callbacks:{
-     title:items=>items[0]?.raw?.label||'',
+     title:items=>items[0]?.raw?.label||
+      (items[0]?.raw?.forecast?timeFormat.format(new Date(items[0].raw.x)):''),
+
      label:item=>item.dataset.label+': '+number(item.parsed.y)+
-       (stacked&&item.dataset.stack==='componentes'?' personas equivalentes estimadas':' personas medidas'),
+       (item.dataset.forecast?' personas equivalentes previstas (reservas, no asistencia)':
+        stacked&&item.dataset.stack==='componentes'?' personas equivalentes estimadas':' personas medidas'),
      footer:items=>aggregate?(items[0].raw.count+' lecturas en el intervalo'):''
     }}
    },
    scales:{
-    x:{type:'linear',grid:{display:false},ticks:{
+    x:{type:'linear',...(futureShown?{max:nowMs+120*60000}:{}),grid:{display:false},ticks:{
      maxTicksLimit:7,color:'#8b98ab',font:{size:10},
      callback:value=>new Intl.DateTimeFormat('es-ES',{timeZone:zone,...(granularity==='raw'?{hour:'2-digit',minute:'2-digit'}:granularity==='hour'?{day:'2-digit',month:'2-digit',hour:'2-digit'}:{day:'2-digit',month:'2-digit'})}).format(new Date(value))
     }},
@@ -827,9 +906,13 @@ setInterval(()=>{if(!quickMode)ensureHistory(true);},3600000);
 setInterval(()=>{if(!quickMode)loadArchiveIndex();},300000);
 // Reconsultar solo mientras se visualiza el desglose, sin refrescar la página.
 setInterval(()=>{
- if(!quickMode&&breakdownEnabled&&document.visibilityState==='visible')loadBreakdown();
+ if(!quickMode&&breakdownEnabled&&document.visibilityState==='visible'){
+  loadBreakdown();loadForecast();
+ }
 },120000);
 document.addEventListener('visibilitychange',()=>{
- if(document.visibilityState==='visible'&&breakdownEnabled&&!quickMode)loadBreakdown();
+ if(document.visibilityState==='visible'&&breakdownEnabled&&!quickMode){
+  loadBreakdown();loadForecast();
+ }
 });
 })();
