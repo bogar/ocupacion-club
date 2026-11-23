@@ -9,7 +9,7 @@ test('el desglose no retrocede al respaldo de Pages',()=>{
  assert.match(code,/fetch\(url,\{cache:'no-store'\}\)/);
 });
 test('el desglose se refresca mientras está visible y al recuperar el foco',()=>{
- assert.match(code,/if\(!quickMode&&breakdownEnabled&&document\.visibilityState==='visible'\)\s*\{\s*loadBreakdown\(\);loadForecast\(\);/);
+ assert.match(code,/if\(!quickMode&&breakdownEnabled&&document\.visibilityState==='visible'\)\s*\{\s*loadBreakdown\(\);loadBreakdownRecent\(\);loadForecast\(\);/);
  assert.match(code,/\},120000\)/);
  assert.match(code,/addEventListener\('visibilitychange'/);
 });
