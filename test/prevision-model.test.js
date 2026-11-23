@@ -78,3 +78,11 @@ test('v2 rechaza datos privados, valores imposibles y centro de franja incorrect
  const empty={...doc,current:null};
  assert.equal(model.parse(empty).current,null);
 });
+
+test('una franja ya empezada nunca se muestra como previsión futura',()=>{
+ const doc=model.parse(valid());
+ const now=Date.parse('2026-11-23T14:05:00.000Z');
+ const upcoming=model.active(doc,now);
+ assert.deepEqual(upcoming.map(p=>new Date(p.ms).toISOString()),
+  ['2026-11-23T14:22:30.000Z']);
+});
