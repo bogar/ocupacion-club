@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -31,6 +32,21 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Esperar a que el artefacto esté visible en la API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          for attempt in $(seq 1 12); do
+            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=$ARTIFACT_NAME" --jq '.total_count') || count=0
+            if [ "$count" = 1 ]; then exit 0; fi
+            sleep 5
+          done
+          echo "::error::No se encontró un artefacto único para este intento"
+          exit 1
       - name: Publicar sitio estático
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
