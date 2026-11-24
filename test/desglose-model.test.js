@@ -110,3 +110,15 @@ test('desglose reciente solo admite el pasado de tres horas y caduca',()=>{
  const privateField={...doc,points:[{...doc.points[0],name:'private'}]};
  assert.equal(model.parseRecent(privateField,now),null);
 });
+
+test('v3 conserva las primeras clases durante todo el día civil de Madrid',()=>{
+ const now=Date.parse('2026-11-24T14:00:00.000Z');
+ const doc={version:3,metric:'recent_category_estimates',
+  generated_at:'2026-11-24T13:55:00.000Z',valid_until:'2026-11-24T14:20:00.000Z',
+  points:[mk('2026-11-24T06:07:30.000Z',{directed:5,tennis:null,squash:null,fronton:null})]};
+ assert.equal(model.parseRecent(doc,now).points[0].directed,5);
+ assert.equal(model.parseRecent({...doc,points:[{...doc.points[0],timestamp:'2026-11-23T22:52:30.000Z'}]},now),null);
+ assert.equal(model.parseRecent({...doc,points:[{...doc.points[0],directed:3}]},now),null);
+ assert.equal(model.parseRecent({...doc,points:[{...doc.points[0],directed:6}]},now),null);
+ assert.equal(model.parseRecent(doc,Date.parse('2026-11-24T14:21:00.000Z')),null);
+});

@@ -220,7 +220,14 @@ function effectiveBreakdown(){
   return breakdownPoints;
  // Las franjas recientes y consolidadas usan el mismo modelo de 15 min.
  const byTime=new Map(breakdownPoints.map(p=>[p.ms,p]));
- for(const point of breakdownRecentPoints)byTime.set(point.ms,point);
+ for(const point of breakdownRecentPoints){
+  const consolidated=byTime.get(point.ms);
+  if(!consolidated){byTime.set(point.ms,point);continue;}
+  const merged={...point};
+  for(const key of window.OcupacionDesglose.categories)
+   if(consolidated[key]!==null&&consolidated[key]!==undefined)merged[key]=consolidated[key];
+  byTime.set(point.ms,merged);
+ }
  return [...byTime.values()].sort((a,b)=>a.ms-b.ms);
 }
 let forecastDoc=null,forecastLoading=false,forecastFailed=false;
@@ -601,7 +608,7 @@ function trend(){
     ' puntos con estimaciones comparables.'+
      (period===1&&!selectedDay&&!selectedMonth&&
       Date.now()<breakdownRecentExpiry&&breakdownRecentPoints.length?
-      ' · Últimas 3 h actualizadas con capturas recientes.':''));
+      ' · Estimaciones de hoy actualizadas con capturas recientes (provisionales hasta el cierre de clase).':''));
   }else $('breakdownInfo').textContent=breakdownInfo('No hay estimaciones coincidentes con este periodo. Se muestra el total real.');
  }else if(breakdownEnabled){
   $('breakdownInfo').textContent=breakdownLoading?'Comprobando desglose anónimo…':
@@ -613,6 +620,8 @@ function trend(){
        'Consultando desglose mensual. Se muestra el total real.'):
      'Desglose sin estimaciones validadas. Se muestra el total real.');
  }
+ // Una única entrada y un único control por categoría, incluso con varias franjas.
+ const legendKey=label=>label.replace(/ \((?:previsión|franja actual)\)$/,'');
  // El futuro se superpone, nunca apila ni prolonga el total medido.
  const futureEnabled=breakdownEnabled&&!selectedDay&&!selectedMonth&&period===1;
  const nowMs=Date.now();
@@ -704,10 +713,21 @@ function trend(){
    plugins:{
     legend:{display:aggregate||stacked||futureShown>0||ongoingShown>0,position:'bottom',labels:{
      usePointStyle:true,boxWidth:7,padding:18,color:'#7588a2',font:{size:11},
-     // En móvil evitar cuatro entradas duplicadas: color heredado + trazo discontinuo.
-     filter:item=>!stacked||(
-      !item.text.endsWith(' (previsión)')&&
-      !item.text.endsWith(' (franja actual)'))
+     generateLabels(chart){
+      const items=Chart.defaults.plugins.legend.labels.generateLabels(chart);
+      const seen=new Set();
+      return items.filter(item=>{
+       const key=legendKey(item.text);
+       if(seen.has(key))return false;
+       seen.add(key);item.text=key;return true;
+      });
+     }
+    },onClick(_event,item,legend){
+     const chart=legend.chart;
+     const indices=chart.data.datasets.map((dataset,index)=>legendKey(dataset.label)===item.text?index:-1).filter(index=>index>=0);
+     const visible=indices.some(index=>chart.isDatasetVisible(index));
+     for(const index of indices)chart.setDatasetVisibility(index,!visible);
+     chart.update();
     }},
     tooltip:{callbacks:{
      title:items=>items[0]?.raw?.label||
