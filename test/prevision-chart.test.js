@@ -31,7 +31,8 @@ test('solo Hoy mezcla el desglose reciente con el histórico y respeta caducidad
  assert.match(code,/data\/desglose-reciente\.json/);
  assert.match(code,/function effectiveBreakdown\(\)/);
  assert.match(code,/Date\.now\(\)>breakdownRecentExpiry/);
- assert.match(code,/for\(const point of breakdownRecentPoints\)byTime\.set\(point\.ms,point\)/);
+ assert.match(code,/for\(const point of breakdownRecentPoints\)\{/);
+ assert.match(code,/merged\[key\]=consolidated\[key\]/);
  assert.match(code,/const layered=window\.OcupacionDesglose\.build\(summary,rows,granularity,effectivePoints,info\)/);
 });
 
@@ -54,4 +55,10 @@ test('las franjas próximas se muestran como intervalos completos en un zoom sep
  assert.match(code,/segment\.end,y:segment\.value/);
  assert.match(code,/part\.phase==='current'/);
  assert.match(code,/Sin datos verificables/);
+});
+
+test('la leyenda agrupa los segmentos por categoría y conmuta todos juntos',()=>{
+ assert.match(code,/const legendKey=label=>label.replace/);
+ assert.match(code,/if\(seen.has\(key\)\)return false/);
+ assert.match(code,/chart.setDatasetVisibility\(index,!visible\)/);
 });

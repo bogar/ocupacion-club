@@ -108,12 +108,14 @@
    series:data,labels:aliases};
  }
 
+ const madridDayFormat=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'});
+ function madridDay(ms){return madridDayFormat.format(new Date(ms));}
  function parseRecent(input,now=Date.now()){
   if(!input||typeof input!=='object'||Array.isArray(input)||
     Object.keys(input).sort().join(',')!==
       'generated_at,metric,points,valid_until,version'||
-    input.metric!=='recent_category_estimates'||![1,2].includes(input.version)||
-    !Array.isArray(input.points)||input.points.length>13)return null;
+    input.metric!=='recent_category_estimates'||![1,2,3].includes(input.version)||
+    !Array.isArray(input.points)||input.points.length>(input.version===3?100:13))return null;
   const generated=Date.parse(input.generated_at),until=Date.parse(input.valid_until);
   if(typeof input.generated_at!=='string'||typeof input.valid_until!=='string'||
     !Number.isFinite(generated)||!Number.isFinite(until)||
@@ -121,9 +123,14 @@
     new Date(until).toISOString()!==input.valid_until||
     until<=generated||until-generated>30*60000||
     now<generated-60000||now>until)return null;
-  const points=parse({version:input.version,
+  const dayMode=input.version===3;
+  if(dayMode&&madridDay(now)!==madridDay(generated))return null;
+  if(dayMode&&input.points.some(p=>!p||Object.keys(p).sort().join(',')!=='directed,fronton,squash,tennis,timestamp'||
+    (p.directed!==null&&(!Number.isSafeInteger(p.directed)||p.directed<5||p.directed%5!==0))))return null;
+  const points=parse({version:dayMode?2:input.version,
    metric:'estimated_people_by_category',points:input.points});
-  if(!points||points.some(p=>p.ms>generated||generated-p.ms>3*3600000||
+  if(!points||points.some(p=>p.ms>generated||
+    (dayMode?madridDay(p.ms)!==madridDay(generated):generated-p.ms>3*3600000)||
     categories.every(key=>p[key]===null)))return null;
   return {points,until};
  }
