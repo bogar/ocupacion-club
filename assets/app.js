@@ -620,6 +620,20 @@ function trend(){
        'Consultando desglose mensual. Se muestra el total real.'):
      'Desglose sin estimaciones validadas. Se muestra el total real.');
  }
+ // Solo las series de lecturas históricas: no tocar previsión ni estadísticas.
+ const gaps=granularity==='raw'&&window.OcupacionHuecos?
+  window.OcupacionHuecos.find(summary):[];
+ if(gaps.length){
+  for(const dataset of series){
+   dataset.data=window.OcupacionHuecos.breakSeries(dataset.data,gaps);
+   dataset.spanGaps=false;
+  }
+  const longest=Math.max(...gaps.map(g=>g.minutes));
+  const total=gaps.reduce((sum,g)=>sum+g.minutes,0);
+  $('chartCaption').textContent+=' · Sin cobertura continua: '+gaps.length+
+   (gaps.length===1?' hueco':' huecos')+' entre lecturas ('+total+
+   ' min en total; máximo '+longest+' min).';
+ }
  // Una única entrada y un único control por categoría, incluso con varias franjas.
  const legendKey=label=>label.replace(/ \((?:previsión|franja actual)\)$/,'');
  // El futuro se superpone, nunca apila ni prolonga el total medido.
