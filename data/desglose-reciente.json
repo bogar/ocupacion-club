@@ -1,8 +1,8 @@
 {
   "version": 3,
   "metric": "recent_category_estimates",
-  "generated_at": "2026-11-26T18:08:01.851Z",
-  "valid_until": "2026-11-26T18:33:01.851Z",
+  "generated_at": "2026-11-26T18:23:01.816Z",
+  "valid_until": "2026-11-26T18:48:01.816Z",
   "points": [
     {
       "timestamp": "2026-11-26T07:07:30.000Z",
@@ -317,6 +317,13 @@
       "directed": null,
       "tennis": 9,
       "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-26T18:22:30.000Z",
+      "directed": 35,
+      "tennis": null,
+      "squash": null,
       "fronton": 0
     }
   ]
