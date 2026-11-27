@@ -2566,17 +2566,101 @@
     },
     {
       "timestamp": "2026-11-27T17:07:30.000Z",
-      "directed": null,
+      "directed": 20,
       "tennis": 15,
       "squash": 6,
       "fronton": 0
     },
     {
       "timestamp": "2026-11-27T17:22:30.000Z",
-      "directed": null,
+      "directed": 35,
       "tennis": null,
       "squash": null,
       "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T17:37:30.000Z",
+      "directed": 35,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T17:52:30.000Z",
+      "directed": 35,
+      "tennis": null,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T18:07:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T18:22:30.000Z",
+      "directed": 25,
+      "tennis": null,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T18:37:30.000Z",
+      "directed": 25,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T18:52:30.000Z",
+      "directed": 25,
+      "tennis": null,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T19:07:30.000Z",
+      "directed": null,
+      "tennis": 9,
+      "squash": 6,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T19:22:30.000Z",
+      "directed": 5,
+      "tennis": null,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T19:37:30.000Z",
+      "directed": 5,
+      "tennis": 15,
+      "squash": null,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T19:52:30.000Z",
+      "directed": 5,
+      "tennis": null,
+      "squash": null,
+      "fronton": 4
+    },
+    {
+      "timestamp": "2026-11-27T20:07:30.000Z",
+      "directed": null,
+      "tennis": 15,
+      "squash": 6,
+      "fronton": 4
+    },
+    {
+      "timestamp": "2026-11-27T20:22:30.000Z",
+      "directed": null,
+      "tennis": null,
+      "squash": null,
+      "fronton": 4
     }
   ]
 }
