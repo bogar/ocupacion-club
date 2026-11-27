@@ -1,41 +1,34 @@
 {
   "version": 2,
   "current": {
-    "timestamp": "2026-11-27T09:37:30.000Z",
-    "directed": 5,
-    "tennis": 12,
+    "timestamp": "2026-11-27T09:52:30.000Z",
+    "directed": null,
+    "tennis": null,
     "squash": null,
     "fronton": 0
   },
   "metric": "future_reservation_equivalents",
-  "generated_at": "2026-11-27T09:38:01.834Z",
-  "valid_until": "2026-11-27T10:03:01.834Z",
+  "generated_at": "2026-11-27T09:53:01.812Z",
+  "valid_until": "2026-11-27T10:18:01.812Z",
   "horizon_minutes": 120,
   "points": [
     {
-      "timestamp": "2026-11-27T09:52:30.000Z",
-      "directed": null,
-      "tennis": null,
-      "squash": null,
-      "fronton": 0
-    },
-    {
       "timestamp": "2026-11-27T10:07:30.000Z",
-      "directed": null,
+      "directed": 5,
       "tennis": 9,
       "squash": 0,
       "fronton": 0
     },
     {
       "timestamp": "2026-11-27T10:22:30.000Z",
-      "directed": null,
+      "directed": 5,
       "tennis": 9,
       "squash": 0,
       "fronton": 0
     },
     {
       "timestamp": "2026-11-27T10:37:30.000Z",
-      "directed": null,
+      "directed": 5,
       "tennis": 9,
       "squash": 0,
       "fronton": 0
@@ -56,6 +49,13 @@
     },
     {
       "timestamp": "2026-11-27T11:22:30.000Z",
+      "directed": null,
+      "tennis": 9,
+      "squash": 0,
+      "fronton": 0
+    },
+    {
+      "timestamp": "2026-11-27T11:37:30.000Z",
       "directed": null,
       "tennis": 9,
       "squash": 0,
